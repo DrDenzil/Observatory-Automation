@@ -4,14 +4,11 @@ Automated telescope job queue system for Bayfordbury Observatory.
 
 ## Quick Start
 
-### 1. Clone the repo
+### Telescope Machines
 ```bash
 git clone https://github.com/DrDenzil/Observatory-Automation.git
 cd Observatory-Automation/runner
-```
 
-### 2. Deploy to a telescope machine
-```bash
 ./deploy.sh --machine-id scope03
 ```
 
@@ -21,7 +18,7 @@ Options:
 - `--install-lx200gps` - Add LX200GPS telescope init
 - `--install-cron` - Run automation every 2 hours
 
-### 3. Run the automation
+### Run
 ```bash
 cd ~/.ekos-runner
 ./run.sh scope03
@@ -36,23 +33,33 @@ Or step-by-step:
 ./push_jobs.sh --machine-id scope03
 ```
 
-## What it does
+## What It Does
 
 1. Pulls jobs from star-server
-2. Converts RTML to EKOS format
+2. Converts to EKOS format (.esq, .esl)
 3. Loads into KStars scheduler
 4. Captures images
-5. Uploads back to server with metadata
+5. Uploads back to server with FITS headers
 
-## Key Files
+## Folder Structure
+
+```
+runner/           → Copy to telescope machines
+backend/         → Copy to star-server web root
+  └── source/PHP files/   (website + import.php)
+```
+
+## Key Files (runner/)
 
 | File | Purpose |
 |------|---------|
+| `deploy.sh` | Deploy to new machine |
 | `pull_jobs.sh` | Download jobs from server |
 | `ekos_runner.py` | Convert to EKOS format |
 | `push_jobs.sh` | Upload captures + inject headers |
 | `load_scheduler.sh` | Load jobs into KStars |
-| `deploy.sh` | Deploy to new machine |
+| `emergency-shutdown.sh` | Emergency stop |
+| `weather-watchdog.sh` | Weather monitoring |
 
 ## Server Access
 
@@ -60,17 +67,11 @@ Or step-by-step:
 - **SSH User:** ds
 - **Key:** `~/.ssh/id_rsa_star`
 
-## Job Directories
-
-- **Local:** `/var/lib/ekos-runner/jobs/scope03/`
-- **Server:** `/www/bayfordbury/automation/jobs/`
-
 ## Documentation
 
-- `HOW_IT_WORKS.md` - How the system works
-- `MEMORY.md` - Technical notes and troubleshooting
+See [GUIDE.md](GUIDE.md) for the full technical guide.
 
-## Issues?
+## Troubleshooting
 
 Check the logs:
 ```bash
