@@ -14,7 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SSH_KEY_FILE="${HOME}/.ssh/id_rsa_star"
 STAR_HOST="star-server"
-STAR_USER="ds"
+STAR_USER="robotic"
 INSTALL_CRON=false
 SKIP_DEPS=false
 INSTALL_WEATHER=false

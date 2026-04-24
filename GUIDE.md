@@ -39,7 +39,7 @@ The brains of the operation. Holds:
 - The database (all the image info)
 - The image storage (the actual pretty pictures)
 
-**Access:** SSH as user 'ds' using the key at `~/.ssh/id_rsa_star`
+**Access:** SSH as user 'robotic' using the key at `~/.ssh/id_rsa_star`
 
 **Key paths:**
 - Web stuff: `/www/bayfordbury/`
@@ -452,8 +452,8 @@ Likely:
 
 Check:
 ```bash
-ssh ds@star-server ls /www/bayfordbury/automation/jobs/outgoing/scope03/
-ssh -i ~/.ssh/id_rsa_star ds@star-server echo OK
+ssh robotic@star-server ls /www/bayfordbury/automation/jobs/outgoing/scope03/
+ssh -i ~/.ssh/id_rsa_star robotic@star-server echo OK
 ```
 
 ### 2. KStars Won't Play Ball (D-Bus error)
@@ -478,8 +478,8 @@ Likely:
 Check:
 ```bash
 ls /var/lib/ekos-runner/jobs/scope03/generated/*/captures/*.fit
-ssh ds@star-server ls /www/bayfordbury/automation/control/fitsin/
-ssh ds@star-server ls /www/bayfordbury/automation/fits/
+ssh robotic@star-server ls /www/bayfordbury/automation/control/fitsin/
+ssh robotic@star-server ls /www/bayfordbury/automation/fits/
 ```
 
 ### 4. Weather Safety Won't Let Anything Run
@@ -545,11 +545,11 @@ cd ~/.ekos-runner && ./run.sh scope03
 ./status.sh scope03
 
 # Check server
-ssh ds@star-server ls /www/bayfordbury/automation/jobs/outgoing/scope03/
-ssh ds@star-server ls /www/bayfordbury/automation/fits/
+ssh robotic@star-server ls /www/bayfordbury/automation/jobs/outgoing/scope03/
+ssh robotic@star-server ls /www/bayfordbury/automation/fits/
 
 # Test SSH
-ssh -i ~/.ssh/id_rsa_star ds@star-server echo OK
+ssh -i ~/.ssh/id_rsa_star robotic@star-server echo OK
 
 # Test KStars D-Bus
 dbus-send --session --dest=org.kde.kstars --print-reply /KStars/Ekos/Scheduler org.freedesktop.DBus.Introspectable.Introspect

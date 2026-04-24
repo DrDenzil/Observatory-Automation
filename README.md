@@ -64,7 +64,7 @@ backend/         → Copy to star-server web root
 ## Server Access
 
 - **Host:** star-server (147.197.221.254)
-- **SSH User:** ds
+- **SSH User:** robotic
 - **Key:** `~/.ssh/id_rsa_star`
 
 ## Documentation

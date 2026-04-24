@@ -38,7 +38,7 @@ EOF
 }
 
 MACHINE_ID="${MACHINE_ID:-scope06}"
-REMOTE_USER="${REMOTE_USER:-ds}"
+REMOTE_USER="${REMOTE_USER:-robotic}"
 REMOTE_HOST="${REMOTE_HOST:-star-server}"
 REMOTE_BASE="${REMOTE_BASE:-/www/bayfordbury/automation/jobs}"
 LOCAL_BASE="${LOCAL_BASE:-/var/lib/ekos-runner/jobs}"

@@ -54,7 +54,7 @@ KSTAR_DEST="${KSTAR_DEST:-org.kde.kstars}"
 JOB_ID="${JOB_ID:-}"
 SSH_KEY="${SSH_KEY:-${HOME}/.ssh/id_rsa_star}"
 STAR_HOST="${STAR_HOST:-star-server}"
-STAR_USER="${STAR_USER:-ds}"
+STAR_USER="${STAR_USER:-robotic}"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
