@@ -1,74 +1,78 @@
-# Observatory Automation
+# Bayfordbury Observatory - EKOS Automation
 
-Migration workspace for moving a legacy RTML/ACP observatory workflow toward a machine-routed KStars/EKOS workflow.
+Automated telescope job queue system for Bayfordbury Observatory.
 
-## What this repo is for
+## Quick Start
 
-This repo is the working project space for:
+### 1. Clone the repo
+```bash
+git clone https://github.com/DrDenzil/Observatory-Automation.git
+cd Observatory-Automation/runner
+```
 
-- analysing the original PHP/RTML system
-- documenting how the existing workflow behaves
-- designing a neutral queue/job format
-- prototyping an EKOS-oriented export path
-- prototyping a runner for Ubuntu 24.04 telescope machines
-- keeping enough notes that the project is easy to resume after interruptions
+### 2. Deploy to a telescope machine
+```bash
+./deploy.sh --machine-id scope03
+```
 
-## Current status
+Options:
+- `--machine-id scopeXX` - Which telescope (required)
+- `--install-weather` - Add weather safety system
+- `--install-lx200gps` - Add LX200GPS telescope init
+- `--install-cron` - Run automation every 2 hours
 
-Working prototype pieces exist for:
+### 3. Run the automation
+```bash
+cd ~/.ekos-runner
+./run.sh scope03
+```
 
-- **legacy workflow analysis**
-- **PHP relationship mapping**
-- **RTML → neutral job export**
-- **EKOS queue routing by machine ID**
-- **Ubuntu runner prototype**
-- **server/test-machine deployment checklist**
+Or step-by-step:
+```bash
+./pull_jobs.sh --machine-id scope03
+./ekos_runner.py --machine-id scope03
+./load_scheduler.sh --machine-id scope03
+# wait for captures...
+./push_jobs.sh --machine-id scope03
+```
 
-Not finished yet:
+## What it does
 
-- real EKOS-native scheduler/sequence generation
-- actual KStars/EKOS launch or DBus integration
-- return-path for job status back to the central server
-- machine-specific config for cameras, filters, and profiles
+1. Pulls jobs from star-server
+2. Converts RTML to EKOS format
+3. Loads into KStars scheduler
+4. Captures images
+5. Uploads back to server with metadata
 
-## Repo layout
+## Key Files
 
-This repository root should contain the observatory automation project itself.
-It is fine for the project files to live directly at the repo root.
-Do not mix in unrelated OpenClaw workspace files, assistant memory/task files, or other repos.
+| File | Purpose |
+|------|---------|
+| `pull_jobs.sh` | Download jobs from server |
+| `ekos_runner.py` | Convert to EKOS format |
+| `push_jobs.sh` | Upload captures + inject headers |
+| `load_scheduler.sh` | Load jobs into KStars |
+| `deploy.sh` | Deploy to new machine |
 
-- `analysis/` — findings, maps, and architecture notes from the legacy PHP code
-- `deployment/` — practical deployment and testing checklists
-- `runner/` — Ubuntu 24.04 EKOS runner prototype and service examples
-- `source/` — source copies of the legacy PHP app under study
-- `specs/` — contract docs, field mappings, and design notes
-- `uploads/` — original uploaded source artifacts for traceability
+## Server Access
 
-## Best starting points
+- **Host:** star-server (147.197.221.254)
+- **SSH User:** ds
+- **Key:** `~/.ssh/id_rsa_star`
 
-If you are picking this project up fresh, read these first:
+## Job Directories
 
-1. `analysis/initial-findings.md`
-2. `analysis/php-relationship-map.md`
-3. `specs/rtml-to-ekos-mapping.md`
-4. `specs/ekos-queue-contract.md`
-5. `deployment/test-deployment-checklist.md`
-6. `STATUS.md`
+- **Local:** `/var/lib/ekos-runner/jobs/scope03/`
+- **Server:** `/www/bayfordbury/automation/jobs/`
 
-## Prototype workflow in one sentence
+## Documentation
 
-Approved RTML is exported by the PHP app into a **per-machine JSON queue**, then an Ubuntu runner on the correct telescope machine **pulls, claims, and prepares EKOS artifacts locally**.
+- `HOW_IT_WORKS.md` - How the system works
+- `MEMORY.md` - Technical notes and troubleshooting
 
-## Near-term plan
+## Issues?
 
-1. tighten the RTML → EKOS field mapping
-2. replace placeholder `.esq/.esl` output with more realistic EKOS artifacts
-3. test end-to-end on one observatory machine
-4. add status reporting back to the server
-5. expand machine-specific configuration for the full telescope fleet
-
-## Notes
-
-This repo is intentionally a working engineering notebook as well as a codebase.
-
-The goal is not just to build the migration, but to make it easy to stop and restart work without losing context.
+Check the logs:
+```bash
+/var/log/ekos-runner-scope03.log
+```
