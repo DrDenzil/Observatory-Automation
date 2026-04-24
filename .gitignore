@@ -1,0 +1,53 @@
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+.coverage
+htmlcov/
+
+# Local job directories (should be on server)
+jobs/
+captures/
+generated/
+
+# SSH keys and credentials
+*.pem
+*.key
+id_rsa*
+credentials.json
+
+# Environment files
+.env
+.env.local
+
+# Jupyter
+.ipynb_checkpoints/

@@ -1,0 +1,16 @@
+[Unit]
+Description=Pull EKOS jobs for %i from central server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ekos
+Group=ekos
+WorkingDirectory=/opt/ekos-runner
+Environment=MACHINE_ID=%i
+Environment=REMOTE_USER=denis
+Environment=REMOTE_HOST=observatory-server
+Environment=REMOTE_BASE=/var/www/html/jobs
+Environment=LOCAL_BASE=/var/lib/ekos-runner/jobs
+ExecStart=/opt/ekos-runner/pull_jobs.sh

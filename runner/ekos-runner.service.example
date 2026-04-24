@@ -1,0 +1,14 @@
+[Unit]
+Description=Prototype EKOS runner for %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ekos
+Group=ekos
+WorkingDirectory=/opt/ekos-runner
+ExecStart=/usr/bin/python3 /opt/ekos-runner/ekos_runner.py --machine-id %i --dry-run
+
+[Install]
+WantedBy=multi-user.target

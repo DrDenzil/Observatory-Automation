@@ -1,0 +1,10 @@
+[Unit]
+Description=Poll central server for EKOS jobs every minute for %i
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1min
+Unit=ekos-pull.service@%i.service
+
+[Install]
+WantedBy=timers.target

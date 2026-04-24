@@ -1,0 +1,18 @@
+[Unit]
+Description=Weather Safety Watchdog - Monitors weather and triggers emergency shutdown
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.ekos-runner
+ExecStart=%h/.ekos-runner/weather-watchdog.sh --daemon --interval 30
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=weather-watchdog
+
+[Install]
+WantedBy=multi-user.target
