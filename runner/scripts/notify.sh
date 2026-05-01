@@ -2,7 +2,7 @@
 # Notify script - sends error notifications via Bayfordbury API
 # Usage: notify.sh "Title" "Message"
 
-API_URL="https://www.bayfordbury.herts.ac.uk/api/notification.php"
+API_URL="https://147.197.221.254/api/notification.php"
 API_KEY="9okEap1xDT2mVR3k"
 
 if [[ $# -lt 2 ]]; then
