@@ -431,6 +431,12 @@ copy_scripts() {
     if [[ -d "${SCRIPT_DIR}" ]]; then
         cp -f "${SCRIPT_DIR}"/*.sh "${INSTALL_DIR}/" 2>/dev/null || true
         cp -f "${SCRIPT_DIR}"/*.py "${INSTALL_DIR}/" 2>/dev/null || true
+        # Copy scripts subdirectory if it exists
+        if [[ -d "${SCRIPT_DIR}/scripts" ]]; then
+            cp -f "${SCRIPT_DIR}/scripts/"*.sh "${INSTALL_DIR}/scripts/" 2>/dev/null || true
+            mkdir -p "${INSTALL_DIR}/scripts"
+            cp -f "${SCRIPT_DIR}/scripts/"*.sh "${INSTALL_DIR}/scripts/"
+        fi
         chmod +x "${INSTALL_DIR}"/*.sh
         chmod +x "${INSTALL_DIR}"/*.py
         log "Scripts copied to ${INSTALL_DIR}"
