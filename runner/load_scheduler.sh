@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 # Load scheduler files into KStars via D-Bus
 # Usage: ./load_scheduler.sh [--machine-id scope01] [--dry-run] [--no-start]
 
 log() {
     echo "[$(date -Iseconds)] $*"
+}
+
+# Load notification helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/scripts/notify.sh" 2>/dev/null || notify() { echo "Notify: $1 - $2"; }
+
+# Notify error and exit
+error_exit() {
+    notify "Scheduler Error" "Machine ${MACHINE_ID:-unknown}: $1"
+    log "ERROR: $1"
+    exit 1
 }
 
 usage() {
@@ -17,6 +28,7 @@ Options:
     --queue-root PATH    Local queue root (default: /var/lib/ekos-runner/jobs)
     --dry-run            Preview what would be loaded
     --no-start           Don't auto-start KStars if not running
+    --no-auto-start     Don't auto-start scheduler after loading
     -h, --help           Show this help
 
 Environment:
@@ -56,73 +68,52 @@ while [[ $# -gt 0 ]]; do
             NO_START=true
             shift
             ;;
+        --no-auto-start)
+            NO_AUTO_START=true
+            shift
+            ;;
         -h|--help)
             usage
-            exit 0
+            error_exit "Help requested"
             ;;
         *)
             echo "Unknown option: $1"
             usage
-            exit 1
+            error_exit "Unknown option: $1"
             ;;
-    esac
-done
 
-wait_for_kstars() {
-    local timeout="$1"
-    local elapsed=0
-    
-    log "Waiting for KStars D-Bus interface..."
-    while [[ $elapsed -lt $timeout ]]; do
-        if dbus-send --session --dest="${KSTAR_DEST}" --print-reply "${SCHEDULER_PATH}" \
-            org.freedesktop.DBus.Introspectable.Introspect 2>/dev/null | grep -q "Scheduler"; then
-            log "KStars D-Bus ready"
-            return 0
-        fi
-        sleep 1
-        ((elapsed++))
-    done
-    
-    log "ERROR: KStars D-Bus not available after ${timeout}s"
-    return 1
-}
+# Check args
+if [[ -z "${MACHINE_ID:-}" ]]; then
+    error_exit "--machine-id is required"
+fi
 
-ensure_kstars_running() {
-    if dbus-send --session --dest="${KSTAR_DEST}" --print-reply "${SCHEDULER_PATH}" \
-        org.freedesktop.DBus.Introspectable.Introspect 2>/dev/null | grep -q "Scheduler"; then
-        log "KStars is already running"
-        return 0
-    fi
-    
-    if [[ "${NO_START}" == "true" ]]; then
-        log "KStars not running (--no-start specified)"
-        return 1
-    fi
-    
-    log "KStars not running - starting..."
-    
-    if command -v flatpak &>/dev/null && flatpak info org.kde.kstars &>/dev/null; then
-        log "Using Flatpak KStars"
-        nohup flatpak run org.kde.kstars &>/dev/null &
-    else
-        log "Using native KStars"
-        nohup kstars &>/dev/null &
-    fi
-    
-    wait_for_kstars "${KSTAR_TIMEOUT}" || return 1
-    log "KStars started successfully"
-    return 0
-}
-
-GENERATED_PATH="${QUEUE_ROOT}/${MACHINE_ID}/generated"
-
-if [[ ! -d "${GENERATED_PATH}" ]]; then
-    log "No generated directory found: ${GENERATED_PATH}"
+# Check if dry run
+if [[ "${DRY_RUN:-}" == "true" ]]; then
+    log "Dry run - no changes will be made"
     exit 0
 fi
 
-if [[ "${DRY_RUN}" == "false" ]]; then
-    ensure_kstars_running || exit 1
+# Find queue root
+QUEUE_ROOT="/var/lib/ekos-runner/jobs/${MACHINE_ID}"
+mkdir -p "${QUEUE_ROOT}"/{incoming,claimed,completed,failed,generated}
+
+# Check if KStars is running
+ensure_kstars_running || error_exit "KStars not running"
+    
+    # Verify jobs are cleared
+    sleep 1
+    job_count=$(dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
+        "${SCHEDULER_PATH}" \
+        org.freedesktop.DBus.Properties.Get \
+        string:"org.kde.kstars.Ekos.Scheduler" \
+        string:"jsonJobs" 2>/dev/null | grep -o '"name":"' | wc -l || echo 0)
+    job_count="${job_count//[[:space:]]/}"  # Remove any whitespace
+    if [[ "${job_count:-0}" -gt 0 ]]; then
+        log "WARNING: Jobs not fully cleared (count: $job_count), forcing remove..."
+        dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
+            "${SCHEDULER_PATH}" \
+            org.kde.kstars.Ekos.Scheduler.removeAllJobs 2>/dev/null || true
+    fi
 fi
 
 ESL_FILES=()
@@ -131,13 +122,30 @@ if [[ -f "${GENERATED_PATH}/combined_scheduler.esl" ]]; then
     ESL_FILES=("${GENERATED_PATH}/combined_scheduler.esl")
     log "Using combined scheduler"
 else
-    while IFS= read -r -d '' file; do
-        if [[ "$file" != *"combined_scheduler"* ]]; then
-            ESL_FILES+=("$file")
+    # Find the oldest job folder that hasn't been processed yet (no captures AND not already pushed)
+    # Sort by name to get FIFO order (oldest job first)
+    for dir in $(ls -1d "${GENERATED_PATH}"/*/ 2>/dev/null | sort); do
+        dir_name=$(basename "$dir")
+        captures_count=$(ls "$dir/captures/"*.fits 2>/dev/null | wc -l)
+        
+        # Skip if already pushed (has .pushed marker)
+        if [[ -f "$dir/.pushed" ]]; then
+            continue
         fi
-    done < <(find "${GENERATED_PATH}" -maxdepth 2 -name "*.esl" -print0 2>/dev/null)
+        
+        if [[ "$captures_count" -eq 0 ]]; then
+            # Found a job without captures - this is our next job
+            latest_esl=$(find "$dir" -maxdepth 1 -name "*.esl" -not -name "*combined*" 2>/dev/null | head -1)
+            if [[ -n "$latest_esl" ]]; then
+                ESL_FILES=("$latest_esl")
+                log "Using next pending scheduler: ${latest_esl}"
+                break
+            fi
+        fi
+    done
 fi
 
+log "ESL_FILES count: ${#ESL_FILES[@]}"
 if [[ ${#ESL_FILES[@]} -eq 0 ]]; then
     log "No .esl files found in ${GENERATED_PATH}"
     exit 0
@@ -161,8 +169,30 @@ for esl_file in "${ESL_FILES[@]}"; do
             log "ERROR: Failed to load ${esl_file}"
             log "Result: ${result}"
         fi
+fi
+ done
+
+# Auto-start scheduler after loading (unless --no-auto-start is set)
+if [[ "${DRY_RUN}" == "false" ]] && [[ "${NO_AUTO_START:-false}" != "true" ]]; then
+    log "Auto-starting scheduler..."
+    dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
+        "${SCHEDULER_PATH}" \
+        org.kde.kstars.Ekos.Scheduler.start 2>/dev/null || true
+    sleep 2
+    
+    # Verify it started - status 2 = running/capturing
+    status=$(dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
+        "${SCHEDULER_PATH}" \
+        org.freedesktop.DBus.Properties.Get \
+        string:"org.kde.kstars.Ekos.Scheduler" \
+        string:"status" 2>/dev/null | grep -o 'int32 [0-9]' | awk '{print $2}')
+    
+    if [[ "$status" == "2" ]] || [[ "$status" == "0" ]]; then
+        log "Scheduler started successfully (status: running)"
+    else
+        log "WARNING: Scheduler may not have started (status: $status)"
     fi
-done
+fi
 
 if [[ "${DRY_RUN}" == "false" ]]; then
     log "Checking loaded jobs..."

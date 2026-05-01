@@ -8,6 +8,17 @@ log() {
     echo "[$(date -Iseconds)] $*"
 }
 
+# Load notification helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/scripts/notify.sh" 2>/dev/null || notify() { echo "Notify: $1 - $2"; }
+
+# Notify error and exit
+error_exit() {
+    notify "Push Error" "Machine ${MACHINE_ID:-unknown}: $1"
+    log "ERROR: $1"
+    exit 1
+}
+
 inject_fits_headers() {
     local fits_file="$1"
     local queue_ref="$2"
@@ -29,17 +40,17 @@ try:
     hdu = fits.open('$fits_file', mode='update')
     hdr = hdu[0].header
     
-    # Add required headers (don't overwrite if exists)
+    # Add required headers - always overwrite for submitted_by
     if 'GUID' not in hdr:
         hdr['GUID'] = ('$guid', 'RTML Job ID')
     
-    if 'OBSERVER' not in hdr and '$submitted_by':
+    if '$submitted_by':
         hdr['OBSERVER'] = (str('$submitted_by'), 'Observer user ID')
     
-    if 'PRJNAME' not in hdr and '$project':
+    if '$project':
         hdr['PRJNAME'] = ('$project', 'Project name')
     
-    if 'PLNNAME' not in hdr and '$target':
+    if '$target':
         hdr['PLNNAME'] = ('$target', 'Plan/target name')
     
     if 'INSTRUME' not in hdr:
@@ -48,7 +59,7 @@ try:
     if 'TELESCOP' not in hdr:
         hdr['TELESCOP'] = ('CKT', 'Telescope ID')
     
-    if 'PRJID' not in hdr and '$guid':
+    if '$guid':
         hdr['PRJID'] = (int('$guid') if '$guid'.isdigit() else 0, 'Project ID')
     
     hdu.close()
@@ -170,18 +181,22 @@ else
             if [[ "${FITS_COUNT}" -gt 0 ]]; then
                 log "Processing ${FITS_COUNT} FITS files for ${queue_ref}..."
                 
-                # Get job info from manifest
-                local manifest="${captures_dir}/../manifest.json"
-                local job_project="Unknown"
-                local job_submitted_by="0"
+                # Get job info from manifest and completed JSON
+                manifest="${captures_dir}/../manifest.json"
+                completed_json="/var/lib/ekos-runner/jobs/${MACHINE_ID}/completed/${queue_ref}.json"
+                job_project="Unknown"
+                job_submitted_by="0"
                 if [[ -f "$manifest" ]]; then
                     job_project=$(python3 -c "import json; print(json.load(open('$manifest')).get('project', 'Unknown'))" 2>/dev/null || echo "Unknown")
-                    job_submitted_by=$(python3 -c "import json; print(json.load(open('$manifest')).get('submitted_by', '0'))" 2>/dev/null || echo "0")
+                fi
+                # Get submitted_by from completed job JSON
+                if [[ -f "$completed_json" ]]; then
+                    job_submitted_by=$(python3 -c "import json; print(json.load(open('$completed_json')).get('submitted_by', '0'))" 2>/dev/null || echo "0")
                 fi
                 
                 # Get target info from target files
-                local job_target="Unknown"
-                local target_json="${captures_dir}/../targets/"*.json 2>/dev/null
+                job_target="Unknown"
+                target_json="${captures_dir}/../targets/"*.json 2>/dev/null
                 if [[ -f "$target_json" ]]; then
                     job_target=$(python3 -c "import json; print(json.load(open('$target_json')).get('name', 'Unknown'))" 2>/dev/null || echo "Unknown")
                 fi
@@ -198,8 +213,8 @@ else
                         filename=$(basename "$fits_file")
                         
                         # Extract filter and exposure from filename if possible
-                        local fits_filter=$(echo "$filename" | grep -oE '_[A-Z]+_' | tr -d '_' || echo "R")
-                        local fits_exp=$(echo "$filename" | grep -oE '[0-9]+\.[0-9]+s' | tr -d 's' || echo "10")
+                        fits_filter=$(echo "$filename" | grep -oE '_[A-Z]+_' | tr -d '_' || echo "R")
+                        fits_exp=$(echo "$filename" | grep -oE '[0-9]+\.[0-9]+s' | tr -d 's' || echo "10")
                         
                         # Inject FITS headers
                         inject_fits_headers "$fits_file" "$queue_ref" "$job_project" "$job_submitted_by" "$job_target" "$fits_filter" "$fits_exp" || true
@@ -215,6 +230,10 @@ else
                         log "Uploaded: ${filename} -> ${CURRENT_DBID}.fit"
                         ((CURRENT_DBID++))
                     done
+                    
+                    # Mark job as pushed after successful upload
+                    job_dir="$(dirname "${captures_dir}")"
+                    touch "${job_dir}/.pushed"
                 fi
             else
                 log "No FITS files in ${captures_dir}"
@@ -235,17 +254,6 @@ else
 fi
 
 log "Push complete"
-
-# Load scheduler into KStars (local only)
-if [[ "${DRY_RUN}" == "false" && "${LOCAL_MODE}" == "false" ]]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    if [[ -x "${SCRIPT_DIR}/load_scheduler.sh" ]]; then
-        log "Loading scheduler into KStars..."
-        "${SCRIPT_DIR}/load_scheduler.sh" --machine-id "${MACHINE_ID}" --queue-root "${LOCAL_BASE}" || true
-    else
-        log "Note: load_scheduler.sh not found or not executable"
-    fi
-fi
 
 # Update rtml status in database (only when pushing to real server)
 if [[ "${DRY_RUN}" == "false" && "${LOCAL_MODE}" == "false" ]]; then
