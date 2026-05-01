@@ -1,0 +1,19 @@
+[Unit]
+Description=EKOS Observatory Automation Runner
+After=graphical-session.target
+Wants=ekos-runner.timer
+
+[Service]
+Type=oneshot
+User=astro
+Group=astro
+WorkingDirectory=/home/astro/.ekos-runner
+ExecStart=/home/astro/.ekos-runner/run-continuous.sh scope03
+StandardOutput=journal
+StandardError=journal
+# Restart on failure
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=default.target

@@ -1,6 +1,6 @@
 # Observatory Automation - Bayfordbury CKT
 
-## Current Status (April 27, 2026)
+## Current Status (April 28, 2026)
 
 The EKOS/Observatory-Automation pipeline is working end-to-end for the CKT (Telescope) at Bayfordbury Observatory.
 
@@ -35,12 +35,18 @@ Repeat for next job in queue
 ## Running the Pipeline
 
 ```bash
-# Full pipeline (pull → generate → load → wait for captures)
+# Full automated pipeline (runs completely unattended)
 cd ~/.ekos-runner
-./run.sh scope03
+nohup ./run.sh scope03 &
 
-# After captures complete, push results (normally automatic)
-./push_jobs.sh --machine-id scope03
+# The run.sh script now:
+# 1. Pulls jobs from star-server
+# 2. Generates EKOS config files
+# 3. Loads scheduler and auto-starts
+# 4. Monitors for job completion
+# 5. Pushes captures automatically
+# 6. Loads next job when current completes
+# 7. Repeats until all jobs done
 
 # Monitor job status
 dbus-send --session --dest=org.kde.kstars --print-reply /KStars/Ekos/Scheduler org.freedesktop.DBus.Properties.Get string:"org.kde.kstars.Ekos.Scheduler" string:"jsonJobs"
@@ -88,6 +94,39 @@ This allows testing without waiting for dark skies.
 **File**: `ekos_runner.py`
 **Change**: RA comes from website in degrees, EKOS expects hours → divide by 15
 
+### 7. Auto-start scheduler after loading
+**File**: `load_scheduler.sh`
+**Change**: Fixed status check - verifies status 2 (running) with retry logic
+
+### 8. Auto-load next job on completion
+**File**: `run.sh`
+**Change**: Monitors scheduler, pushes captures on job completion, loads next pending job
+
+### 9. Track processed jobs with .pushed marker
+**File**: `push_jobs.sh`, `load_scheduler.sh`
+**Change**: Creates `.pushed` marker after successful upload; load_scheduler skips jobs with this marker
+
+### 10. Fixed set -e issue in load_scheduler
+**File**: `load_scheduler.sh`
+**Change**: Changed `set -euo pipefail` to `set -uo pipefail` - the `-e` was causing early exit when checking pushed jobs
+
+### 11. OBSERVER header injection
+**File**: `push_jobs.sh`
+**Change**: Reads submitted_by from completed job JSON and injects into FITS OBSERVER header (was missed before)
+
+### 13. Import.php observer routing
+**File**: `/www/bayfordbury/automation/control/fitsin/import.php` on star-server
+**Change**: Fixed to use numeric OBSERVER header as observerid - routes files to correct user folder (e.g., /fits/1245/Simulator/)
+
+## Deployment Requirements
+
+New machines need these packages:
+```bash
+sudo apt-get install python3 rsync sshpass xdotool
+```
+
+Note: `xdotool` is not strictly required anymore but kept for debugging.
+
 ## Known Issues
 
 ### PWI4 not reporting coordinates to EKOS
@@ -95,8 +134,48 @@ This allows testing without waiting for dark skies.
 **Status**: Bug reported to KDE (see: https://bugs.kde.org)
 **Workaround**: Use INDI simulator for now
 
-### Multiple jobs queue detection
-**Status**: Being debugged - properly detecting which jobs already have captures
+## Future Work / TODOs
+
+### 1. FITS viewer window cleanup
+**Problem**: FITS viewer windows accumulate (xdotool is too risky, D-Bus clearFITS doesn't work)
+**Options**: 
+- Find KStars setting to disable FITS auto-display
+- Use manual cleanup script (run periodically)
+- Accept accumulation (low priority issue)
+
+### 2. Continuous operation
+**Problem**: Runner exits after processing one cycle
+**Options**:
+- Wrap run.sh in a loop with sleep
+- Create systemd service/timer for continuous operation
+- Add monitoring/alerting for pipeline failures
+
+### 3. PWI4 hardware testing
+**Problem**: PWI4 coordinate bug prevents real hardware use
+**Status**: Waiting for KDE bug fix
+**Next**: Test with real PWI4 mount once bug resolved
+
+### 4. Pipeline monitoring
+**Problem**: No alerting when pipeline fails
+**Options**:
+- Add email/webhook notifications on failure
+- Create dashboard to monitor job status
+- Log aggregation for multiple telescopes
+
+### 5. Weather safety proxy sun calculation bug
+**Symptoms**: Weather safety proxy reports sun altitude as ~18° when actual is ~45°
+**Root cause**: Julian date calculation in `/usr/local/share/indi/scripts/weather_status.p` uses wrong formula (`dt.toordinal() - 1721424.5` instead of proper Julian day calculation)
+**Fix**: Replace lines 52-57 with proper Julian date calculation:
+```python
+a = (14 - dt.month) // 12
+y = dt.year + 4800 - a
+m = dt.month + 12 * a - 3
+jdn = dt.day + ((153 * m + 2) // 5) + 365 * y + y//4 - y//100 + y//400 - 32045
+frac = (dt.hour + dt.minute/60 + dt.second/3600) / 24.0
+jd = jdn + frac - 0.5
+```
+**Workaround**: `export SUN_SAFE=0` to disable sun check
+**Date fixed**: May 1, 2026
 
 ## Directory Structure
 
@@ -151,3 +230,5 @@ pkill -f indiserver
 - PWI4 integration has a KDE bug preventing coordinate reading in EKOS
 - When multiple jobs submitted, they queue and process one at a time in FIFO order
 - Use Simulator project for testing to skip constraints
+- SSH user for star-server is `ds` (updated from `robotic`)
+- SSH key: `~/.ssh/id_rsa_star`

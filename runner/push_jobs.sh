@@ -74,7 +74,7 @@ Options:
 
 Environment variables:
     MACHINE_ID           Machine ID (default: scope06)
-    PUSH_USER            SSH user (default: robotic)
+    PUSH_USER            SSH user (default: ds)
     PUSH_HOST            SSH host (default: star-server)
     FITS_IN              Remote FITS import queue (default: /www/bayfordbury/automation/control/fitsin)
     SSH_PASSWORD         SSH password (alternative to --password)
@@ -91,7 +91,7 @@ EOF
 }
 
 MACHINE_ID="${MACHINE_ID:-scope06}"
-PUSH_USER="${PUSH_USER:-robotic}"
+PUSH_USER="${PUSH_USER:-ds}"
 PUSH_HOST="${PUSH_HOST:-star-server}"
 FITS_IN="${FITS_IN:-/www/bayfordbury/automation/control/fitsin}"
 LOCAL_BASE="${LOCAL_BASE:-/var/lib/ekos-runner/jobs}"
