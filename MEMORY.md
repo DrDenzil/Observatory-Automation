@@ -177,6 +177,19 @@ jd = jdn + frac - 0.5
 **Workaround**: `export SUN_SAFE=0` to disable sun check
 **Date fixed**: May 1, 2026
 
+### 6. Error notifications via webhook
+**Purpose**: Notify on pipeline errors (not on success)
+**Implementation**: 
+- `runner/scripts/notify.sh` - Helper script
+- Uses Bayfordbury API: `https://147.197.221.254/api/notification.php`
+- API key: `9okEap1xDT2mVR3k`
+- Calls from: `run.sh`, `load_scheduler.sh`, `push_jobs.sh`
+**Notifications sent on**:
+- Max wait time reached
+- Scheduler errors
+- Push job failures
+**Date added**: May 1, 2026
+
 ## Directory Structure
 
 ```
