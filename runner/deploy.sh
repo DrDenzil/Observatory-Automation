@@ -86,6 +86,10 @@ while [[ $# -gt 0 ]]; do
             INSTALL_WATCHDOG=true
             shift
             ;;
+        --install-systemd)
+            INSTALL_SYSTEMD=true
+            shift
+            ;;
         -h|--help)
             usage
             exit 0
@@ -125,8 +129,8 @@ install_dependencies() {
     
     if command -v apt-get &>/dev/null; then
         sudo apt-get update -qq
-        sudo apt-get install -y -qq python3 rsync sshpass 2>/dev/null || \
-            sudo apt-get install -y python3 rsync sshpass
+        sudo apt-get install -y -qq python3 rsync sshpass xdotool 2>/dev/null || \
+            sudo apt-get install -y python3 rsync sshpass xdotool
         log "Dependencies installed successfully"
     else
         error "Unsupported package manager. This script supports Debian/Ubuntu."
@@ -628,6 +632,43 @@ HELPEREOF
 }
 
 # =============================================================================
+# Install systemd service for continuous operation
+# =============================================================================
+install_systemd() {
+    log "Installing systemd service for continuous operation..."
+    
+    SERVICE_FILE="${SCRIPT_DIR}/ekos-runner.service"
+    TIMER_FILE="${SCRIPT_DIR}/ekos-runner.timer"
+    
+    if [[ ! -f "$SERVICE_FILE" ]] || [[ ! -f "$TIMER_FILE" ]]; then
+        error "Service/timer files not found in ${SCRIPT_DIR}"
+        return 1
+    fi
+    
+    # Copy service and timer files
+    mkdir -p ~/.config/systemd/user/
+    cp "$SERVICE_FILE" ~/.config/systemd/user/
+    cp "$TIMER_FILE" ~/.config/systemd/user/
+    
+    # Reload systemd
+    systemctl --user daemon-reload
+    
+    # Enable and start timer
+    systemctl --user enable ekos-runner.timer
+    systemctl --user start ekos-runner.timer
+    
+    log "systemd service installed successfully"
+    echo ""
+    echo "Service status:"
+    echo "  systemctl --user status ekos-runner.service"
+    echo "  systemctl --user status ekos-runner.timer"
+    echo ""
+    echo "View logs:"
+    echo "  journalctl --user -u ekos-runner.service -f"
+    echo ""
+}
+
+# =============================================================================
 # MAIN
 # =============================================================================
 main() {
@@ -718,12 +759,19 @@ main() {
         echo ""
     fi
     
+    if [[ "$INSTALL_SYSTEMD" == "true" ]]; then
+        install_systemd
+    fi
+    
     echo "Manual test:"
     echo "  cd ${HOME}/ekos-runner"
     echo "  ./run.sh ${MACHINE_ID}"
     echo ""
     echo "Install automated cron (optional):"
     echo "  ./deploy.sh --machine-id ${MACHINE_ID} --install-cron"
+    echo ""
+    echo "Install systemd service (recommended):"
+    echo "  ./deploy.sh --machine-id ${MACHINE_ID} --install-systemd"
     echo ""
 }
 
