@@ -1,0 +1,92 @@
+MININET LAB - PREREQUISITES
+============================
+
+What you need on a new machine for this to work.
+
+
+1. OPERATING SYSTEM
+-------------------
+- Linux (Ubuntu 20.04+ recommended)
+- OR Windows 10/11 with WSL2 and Docker Desktop
+- Other Linux distros may work but untested
+
+
+2. SOFTWARE REQUIRED
+--------------------
+
+Essential:
+- Docker (or Docker Desktop on Windows)
+- Git (for cloning the repo)
+- bash (for setup script)
+
+On Linux:
+  sudo apt install docker.io git
+
+On Windows:
+  Install Docker Desktop (includes WSL2 backend)
+  Use WSL2 Ubuntu terminal for commands
+
+
+3. BUILD / RUNNING
+------------------
+No special host packages needed for:
+  - Lab04Ex3.py (SIP Protocol) - WORKS
+  - Lab05_1_fixed.py (VLAN standalone) - WORKS
+
+
+4. KERNEL MODULES (HOST REQUIRED)
+----------------------------------
+
+For WiFi Lab (Lab03_2.py):
+  - Module: mac80211_hwsim
+  - Package: linux-modules-extra-$(uname -r)
+  - Load: sudo modprobe mac80211_hwsim
+
+For Open vSwitch (optional, fallback exists):
+  - Module: openvswitch
+  - Not available on WSL2/Windows - handled by userspace fallback
+
+
+5. SYSTEM REQUIREMENTS
+-----------------------
+- ~3GB free disk space for the Docker image
+- ~2GB RAM minimum
+- Docker (root or sudo access)
+- Internet connection for first build/download
+
+
+6. WINDOWS USERS ONLY
+---------------------
+- Docker Desktop (free, with WSL2 backend)
+- WSL2 installed (comes with Docker Desktop)
+- Open WSL2 via: Win+R > type "wsl" > Enter
+- Run ALL commands inside WSL2 terminal, NOT CMD/PowerShell
+- Some labs (Lab03 WiFi) will not work on WSL2
+  (No kernel module support for mac80211_hwsim on WSL2)
+
+
+7. FIRST TIME SETUP COMMANDS
+-----------------------------
+
+On new machine:
+
+  # 1. Install Docker
+  sudo apt install docker.io git   (Linux)
+  # OR install Docker Desktop       (Windows)
+
+  # 2. Clone repo
+  git clone https://github.com/DrDenzil/Mininet-Lab.git ~/docker/mininet
+
+  # 3. Setup
+  cd ~/docker/mininet
+  bash setup.sh
+
+  # 4. Start container
+  docker compose up -d
+
+  # 5. Access container
+  docker exec -it mininet-lab bash
+
+  # 6. Run a lab
+  cd /AppData/mininet
+  python3 Lab04Ex3.py
