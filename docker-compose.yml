@@ -13,6 +13,8 @@ services:
       - /home/astro/AppData/mininet:/AppData/mininet
       - /lib/modules:/lib/modules:ro
       - /sys/kernel/debug:/sys/kernel/debug:rw
+    devices:
+      - /dev/dri:/dev/dri
     environment:
       - DISPLAY=${DISPLAY}
     extra_hosts:
