@@ -18,6 +18,12 @@ RUN sed -i 's/pyflakes//g' util/install.sh && sed -i 's/pep8//g' util/install.sh
 # Run the installation script
 RUN util/install.sh -Wlnfv6 
 
+# Fix matplotlib compatibility: newer matplotlib requires sequences in set_data()
+# Patches all instances in mininet-wifi that pass scalar x,y to set_data()
+RUN sed -i 's/\.plt_node\.set_data(x, y)/.plt_node.set_data([x], [y])/' \
+    /usr/local/lib/python3.9/site-packages/mininet_wifi-2.7-py3.9.egg/mn_wifi/node.py \
+    /usr/local/lib/python3.9/site-packages/mininet_wifi-2.7-py3.9.egg/mn_wifi/plot.py
+
 # MODIFICATIONS FROM BASE IMAGE:
 # 1. Add vlan package (for Lab05 VLAN functionality)
 # 2. Add openvswitch-switch (for OVS switching)
