@@ -50,6 +50,7 @@ SHUTDOWN_TYPE="EMERGENCY"
 DRY_RUN=false
 INDI_HOST="${INDI_HOST:-localhost}"
 INDI_PORT="${INDI_PORT:-7624}"
+PWI4_URL="${PWI4_URL:-http://localhost:8220}"
 KSTAR_DEST="${KSTAR_DEST:-org.kde.kstars}"
 JOB_ID="${JOB_ID:-}"
 SSH_KEY="${SSH_KEY:-${HOME}/.ssh/id_rsa_star}"
@@ -161,66 +162,96 @@ log "Dome parked/closed"
 STEP=$((STEP + 1))
 log "[${STEP}/${TOTAL}] Parking telescope..."
 
-# indi_setprop always exits 0 regardless of whether the device exists, so it
-# cannot be used to detect which driver is loaded. Use indi_getprop instead:
-# it returns output only when the device/property is present in the INDI server.
-wait_for_park() {
+# PWI4 HTTP API park — used when PlaneWave Interface 4 is running.
+# PWI4_URL defaults to http://localhost:8220 and can be overridden via env.
+park_via_pwi4() {
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log "[DRY-RUN] curl ${PWI4_URL}/mount/park"
+        return 0
+    fi
+    curl -s --max-time 3 "${PWI4_URL}/status" 2>/dev/null | grep -q "^mount.is_connected=true" || return 1
+    curl -s --max-time 5 "${PWI4_URL}/mount/park" >/dev/null 2>&1
+}
+
+wait_for_pwi4_park() {
+    local timeout="${1:-120}"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log "[DRY-RUN] Would wait up to ${timeout}s for PWI4 mount to park"
+        return 0
+    fi
+    local deadline=$((SECONDS + timeout))
+    sleep 3  # allow slew to begin before first check
+    log "Waiting up to ${timeout}s for mount to reach park position..."
+    while [[ $SECONDS -lt $deadline ]]; do
+        local status
+        status=$(curl -s --max-time 3 "${PWI4_URL}/status" 2>/dev/null)
+        if echo "$status" | grep -q "^mount.is_connected=true" && \
+           ! echo "$status" | grep -q "^mount.is_slewing=true"; then
+            log "Mount confirmed at park position (PWI4)"
+            return 0
+        fi
+        sleep 3
+    done
+    log "Warning: PWI4 mount park not confirmed within ${timeout}s — verify position manually"
+    return 1
+}
+
+# INDI fallback — used on scopes that run an INDI server (e.g. scope03 simulator).
+# indi_setprop always exits 0 regardless of device presence; use indi_getprop
+# to detect which driver is actually loaded before sending the command.
+wait_for_indi_park() {
     local device="$1"
     local timeout="${2:-120}"
-
     if [[ "$DRY_RUN" == "true" ]]; then
         log "[DRY-RUN] Would wait up to ${timeout}s for ${device} to park"
         return 0
     fi
-
     local interval=5
     local elapsed=0
     log "Waiting up to ${timeout}s for ${device} to reach park position..."
     while [[ $elapsed -lt $timeout ]]; do
-        # -x emits raw INDI XML carrying the property state attribute:
+        # -x emits raw INDI XML with the property state attribute:
         # state="Ok" = parked, state="Busy" = slewing, state="Alert" = error.
         local state
         state=$(indi_getprop -x -h "$INDI_HOST" -p "$INDI_PORT" \
             "${device}.TELESCOPE_PARK.PARK" 2>/dev/null \
             | grep -o 'state="[^"]*"' | head -1 | cut -d'"' -f2 || true)
         case "$state" in
-            Ok)
-                log "${device} confirmed at park position"
-                return 0
-                ;;
-            Alert)
-                log "Warning: ${device} reported a park error (state=Alert) — verify manually"
-                return 1
-                ;;
+            Ok)    log "${device} confirmed at park position"; return 0 ;;
+            Alert) log "Warning: ${device} park error (state=Alert) — verify manually"; return 1 ;;
         esac
         sleep $interval
         elapsed=$((elapsed + interval))
     done
-    log "Warning: ${device} park not confirmed within ${timeout}s — verify position manually before proceeding"
+    log "Warning: ${device} park not confirmed within ${timeout}s — verify position manually"
     return 1
 }
 
 PARKED_TELESCOPE=""
-if [[ "$DRY_RUN" == "true" ]]; then
-    log "[DRY-RUN] indi_setprop Planewave Telescope.TELESCOPE_PARK.PARK=On"
-    PARKED_TELESCOPE="Planewave Telescope"
+if park_via_pwi4; then
+    log "Park command sent via PWI4 HTTP API (${PWI4_URL})"
+    wait_for_pwi4_park 120 || true
+    PARKED_TELESCOPE="PWI4"
 else
-    for driver in "Planewave Telescope" "EQMod Mount" "LX200 GPS" "Telescope Simulator"; do
-        # Check presence first; indi_getprop returns empty for unknown devices.
-        if indi_getprop -h "$INDI_HOST" -p "$INDI_PORT" \
-               "${driver}.TELESCOPE_PARK.PARK" 2>/dev/null | grep -q "PARK="; then
-            indi_setprop -h "$INDI_HOST" -p "$INDI_PORT" \
-                "${driver}.TELESCOPE_PARK.PARK=On" 2>/dev/null || true
-            PARKED_TELESCOPE="$driver"
-            break
-        fi
-    done
+    if [[ "$DRY_RUN" == "false" ]]; then
+        for driver in "EQMod Mount" "LX200 GPS" "Telescope Simulator"; do
+            if indi_getprop -h "$INDI_HOST" -p "$INDI_PORT" \
+                   "${driver}.TELESCOPE_PARK.PARK" 2>/dev/null | grep -q "PARK="; then
+                indi_setprop -h "$INDI_HOST" -p "$INDI_PORT" \
+                    "${driver}.TELESCOPE_PARK.PARK=On" 2>/dev/null || true
+                PARKED_TELESCOPE="$driver"
+                wait_for_indi_park "$driver" 120 || true
+                break
+            fi
+        done
+    else
+        log "[DRY-RUN] PWI4 not available; would try INDI drivers"
+        PARKED_TELESCOPE="DRY-RUN"
+    fi
 fi
 
-if [[ -n "$PARKED_TELESCOPE" ]]; then
-    wait_for_park "$PARKED_TELESCOPE" 120 || true
-else
-    log "Warning: Could not park telescope (may not be connected)"
+if [[ -z "$PARKED_TELESCOPE" ]]; then
+    log "Warning: Could not park telescope (PWI4 not reachable and no INDI mount connected)"
 fi
 log "Telescope park sequence complete"
 
