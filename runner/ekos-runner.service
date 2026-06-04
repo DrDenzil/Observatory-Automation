@@ -4,14 +4,13 @@ After=graphical-session.target
 Wants=ekos-runner.timer
 
 [Service]
-Type=oneshot
-User=astro
-Group=astro
-WorkingDirectory=/home/astro/.ekos-runner
-ExecStart=/home/astro/.ekos-runner/run-continuous.sh scope03
+Type=simple
+WorkingDirectory=%h/.ekos-runner
+Environment=MACHINE_ID=scope09
+EnvironmentFile=-%h/.ekos-runner/ekos-runner.env
+ExecStart=%h/.ekos-runner/run-continuous.sh ${MACHINE_ID}
 StandardOutput=journal
 StandardError=journal
-# Restart on failure
 Restart=on-failure
 RestartSec=60
 

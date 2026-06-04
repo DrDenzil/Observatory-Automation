@@ -27,23 +27,36 @@ inject_fits_headers() {
     local target="$5"
     local filter="$6"
     local exptime="$7"
-    
+    local dbid="$8"
+
     # Generate GUID from queue_ref (ekos_1234_xxx -> 1234)
-    local guid=$(echo "$queue_ref" | sed -n 's/ekos_\([0-9]*\)_.*/\1/p')
-    
+    local rtml_id=$(echo "$queue_ref" | sed -n 's/ekos_\([0-9]*\)_.*/\1/p')
+    local guid="${rtml_id}_${dbid}"
+
     # Use Python with astropy to inject headers
     python3 << PYEOF
 from astropy.io import fits
+from astropy.time import Time
 import sys
 
 try:
     hdu = fits.open('$fits_file', mode='update')
     hdr = hdu[0].header
     
+    # Add JD from DATE-OBS if not already present
+    if 'JD' not in hdr:
+        if 'DATE-OBS' in hdr:
+            try:
+                jd = Time(hdr['DATE-OBS']).jd
+                hdr['JD'] = (jd, 'Julian Date')
+            except Exception:
+                pass
+        if 'JD' not in hdr:
+            hdr['JD'] = (Time.now().jd, 'Julian Date')
+
     # Add required headers - always overwrite for submitted_by
-    if 'GUID' not in hdr:
-        hdr['GUID'] = ('$guid', 'RTML Job ID')
-    
+    hdr['GUID'] = ('$guid', 'RTML Job ID')
+
     if '$submitted_by':
         hdr['OBSERVER'] = (str('$submitted_by'), 'Observer user ID')
     
@@ -59,8 +72,8 @@ try:
     if 'TELESCOP' not in hdr:
         hdr['TELESCOP'] = ('CKT', 'Telescope ID')
     
-    if '$guid':
-        hdr['PRJID'] = (int('$guid') if '$guid'.isdigit() else 0, 'Project ID')
+    if '$rtml_id':
+        hdr['PRJID'] = (int('$rtml_id'), 'Project ID')
     
     hdu.close()
     print('Headers injected OK')
@@ -103,11 +116,11 @@ EOF
 
 MACHINE_ID="${MACHINE_ID:-scope06}"
 PUSH_USER="${PUSH_USER:-ds}"
-PUSH_HOST="${PUSH_HOST:-star-server}"
+PUSH_HOST="${PUSH_HOST:-147.197.221.254}"
 FITS_IN="${FITS_IN:-/www/bayfordbury/automation/control/fitsin}"
 LOCAL_BASE="${LOCAL_BASE:-/var/lib/ekos-runner/jobs}"
 SSH_PASSWORD="${SSH_PASSWORD:-}"
-SSH_OPTS="${SSH_OPTS:--o BatchMode=yes}"
+SSH_OPTS="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5}"
 
 DRY_RUN=false
 LOCAL_MODE=false
@@ -217,7 +230,7 @@ else
                         fits_exp=$(echo "$filename" | grep -oE '[0-9]+\.[0-9]+s' | tr -d 's' || echo "10")
                         
                         # Inject FITS headers
-                        inject_fits_headers "$fits_file" "$queue_ref" "$job_project" "$job_submitted_by" "$job_target" "$fits_filter" "$fits_exp" || true
+                        inject_fits_headers "$fits_file" "$queue_ref" "$job_project" "$job_submitted_by" "$job_target" "$fits_filter" "$fits_exp" "$CURRENT_DBID" || true
                         
                         if [[ "${LOCAL_MODE}" == "true" ]]; then
                             mkdir -p "${LOCAL_PUSH_PATH}/fitsin"

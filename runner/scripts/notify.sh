@@ -1,23 +1,30 @@
 #!/usr/bin/env bash
-# Notify script - sends error notifications via Bayfordbury API
-# Usage: notify.sh "Title" "Message"
+# Notification helper. Safe to source from runner scripts, or execute directly.
 
-API_URL="https://147.197.221.254/api/notification.php"
-API_KEY="9okEap1xDT2mVR3k"
+NOTIFY_API_URL="${NOTIFY_API_URL:-https://147.197.221.254/api/notification.php}"
+NOTIFY_API_KEY="${NOTIFY_API_KEY:-9okEap1xDT2mVR3k}"
 
-if [[ $# -lt 2 ]]; then
-    echo "Usage: $0 \"Title\" \"Message\""
-    exit 1
+notify() {
+    local title="${1:-}"
+    local message="${2:-}"
+
+    if [[ -z "$title" || -z "$message" ]]; then
+        echo "Usage: notify \"Title\" \"Message\"" >&2
+        return 1
+    fi
+
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "Notify: ${title} - ${message}" >&2
+        return 0
+    fi
+
+    curl -ksG \
+        --data-urlencode "p=${NOTIFY_API_KEY}" \
+        --data-urlencode "title=${title}" \
+        --data-urlencode "message=${message}" \
+        "${NOTIFY_API_URL}" >/dev/null 2>&1 || true
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    notify "$@"
 fi
-
-title="$1"
-message="$2"
-
-# URL encode (basic)
-title_encoded=$(echo "$title" | sed 's/ /+/g;s/&/%26/g')
-message_encoded=$(echo "$message" | sed 's/ /+/g;s/&/%26/g')
-
-# Send notification
-curl -s "${API_URL}?p=${API_KEY}&title=${title_encoded}&message=${message_encoded}" > /dev/null
-
-exit 0

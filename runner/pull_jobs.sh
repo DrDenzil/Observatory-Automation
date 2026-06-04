@@ -42,7 +42,7 @@ REMOTE_USER="${REMOTE_USER:-ds}"
 REMOTE_HOST="${REMOTE_HOST:-star-server}"
 REMOTE_BASE="${REMOTE_BASE:-/www/bayfordbury/automation/jobs}"
 LOCAL_BASE="${LOCAL_BASE:-/var/lib/ekos-runner/jobs}"
-SSH_OPTS="${SSH_OPTS:--o BatchMode=yes}"
+SSH_OPTS="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5}"
 SSH_PASSWORD="${SSH_PASSWORD:-}"
 
 DRY_RUN=false

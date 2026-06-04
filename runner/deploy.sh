@@ -13,9 +13,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SSH_KEY_FILE="${HOME}/.ssh/id_rsa_star"
+INSTALL_DIR="${HOME}/.ekos-runner"
 STAR_HOST="star-server"
 STAR_USER="ds"
 INSTALL_CRON=false
+INSTALL_SYSTEMD=false
 SKIP_DEPS=false
 INSTALL_WEATHER=false
 INSTALL_LX200GPS=false
@@ -47,10 +49,10 @@ Examples:
     $0 --machine-id scope05 --install-weather --install-lx200gps
 
 The script will:
-1. Install required dependencies (python3, rsync, sshpass)
+1. Install required dependencies (python3, python3-astropy, curl, rsync, sshpass)
 2. Optionally install KStars/INDI natively (not Flatpak) and weather safety
 3. Create directory structure under /var/lib/ekos-runner/jobs
-4. Copy runner scripts to /home/\$USER/ekos-runner/
+4. Copy runner scripts to /home/\$USER/.ekos-runner/
 5. Set up SSH key authentication for star-server
 6. Optionally install cron jobs for automated processing
 EOF
@@ -129,8 +131,8 @@ install_dependencies() {
     
     if command -v apt-get &>/dev/null; then
         sudo apt-get update -qq
-        sudo apt-get install -y -qq python3 rsync sshpass xdotool 2>/dev/null || \
-            sudo apt-get install -y python3 rsync sshpass xdotool
+        sudo apt-get install -y -qq python3 python3-astropy curl rsync sshpass xdotool 2>/dev/null || \
+            sudo apt-get install -y python3 python3-astropy curl rsync sshpass xdotool
         log "Dependencies installed successfully"
     else
         error "Unsupported package manager. This script supports Debian/Ubuntu."
@@ -345,8 +347,6 @@ install_watchdog() {
     sudo chmod +x /usr/local/share/indi/scripts/weather_status.p
     log "Weather script installed"
     
-    # Copy scripts to ekos-runner directory
-    INSTALL_DIR="${HOME}/.ekos-runner"
     mkdir -p "${INSTALL_DIR}"
     
     # Copy ALL core automation scripts
@@ -377,17 +377,18 @@ install_watchdog() {
     # Install systemd service
     if [[ -f "${SCRIPT_DIR}/weather-watchdog.service" ]]; then
         log "Installing systemd service..."
-        sudo cp "${SCRIPT_DIR}/weather-watchdog.service" /etc/xdg/systemd/user/
-        sudo systemctl daemon-reload
-        sudo systemctl enable weather-watchdog.service
-        log "Watchdog service installed and enabled"
+        mkdir -p "${HOME}/.config/systemd/user"
+        cp "${SCRIPT_DIR}/weather-watchdog.service" "${HOME}/.config/systemd/user/"
+        systemctl --user daemon-reload
+        log "Watchdog user service installed"
         log ""
-        log "To start immediately:"
-        log "  systemctl --user start weather-watchdog"
+        log "Enable/start after supervised hardware checks:"
+        log "  systemctl --user enable weather-watchdog.service"
+        log "  systemctl --user start weather-watchdog.service"
         log ""
         log "To check status:"
-        log "  systemctl --user status weather-watchdog"
-        log "  journalctl --user-unit weather-watchdog -f"
+        log "  systemctl --user status weather-watchdog.service"
+        log "  journalctl --user -u weather-watchdog.service -f"
     fi
     
     log ""
@@ -424,7 +425,6 @@ create_directories() {
 copy_scripts() {
     log "Copying runner scripts..."
     
-    INSTALL_DIR="${HOME}/.ekos-runner"
     mkdir -p "${INSTALL_DIR}"
     
     # Copy all scripts from deploy directory
@@ -436,6 +436,7 @@ copy_scripts() {
             cp -f "${SCRIPT_DIR}/scripts/"*.sh "${INSTALL_DIR}/scripts/" 2>/dev/null || true
             mkdir -p "${INSTALL_DIR}/scripts"
             cp -f "${SCRIPT_DIR}/scripts/"*.sh "${INSTALL_DIR}/scripts/"
+            chmod +x "${INSTALL_DIR}/scripts/"*.sh
         fi
         chmod +x "${INSTALL_DIR}"/*.sh
         chmod +x "${INSTALL_DIR}"/*.py
@@ -474,18 +475,29 @@ setup_ssh_key() {
     chmod 600 "${SSH_KEY_FILE}"
     chmod 644 "${SSH_KEY_PUB}"
     
-    # Configure SSH to use this key for star-server
-    cat > "${SSH_DIR}/config" <<EOF
+    # Configure SSH to use this key for star-server without overwriting any
+    # unrelated SSH configuration.
+    SSH_CONFIG="${SSH_DIR}/config"
+    touch "${SSH_CONFIG}"
+    chmod 600 "${SSH_CONFIG}"
+    cp "${SSH_CONFIG}" "${SSH_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
+    awk -v host="${STAR_HOST}" '
+        /^Host[[:space:]]+/ { skip = ($2 == host) }
+        !skip { print }
+    ' "${SSH_CONFIG}" > "${SSH_CONFIG}.tmp"
+    mv "${SSH_CONFIG}.tmp" "${SSH_CONFIG}"
+
+    cat >> "${SSH_CONFIG}" <<EOF
 # EKOS Runner - ${MACHINE_ID}
 Host ${STAR_HOST}
-    HostName star-server
+    HostName 147.197.221.254
     User ${STAR_USER}
     IdentityFile ${SSH_KEY_FILE}
     BatchMode yes
     StrictHostKeyChecking accept-new
 EOF
     
-    log "SSH config created: ${SSH_DIR}/config"
+    log "SSH config updated: ${SSH_CONFIG}"
     log "Key installed: ${SSH_KEY_FILE}"
 }
 
@@ -529,7 +541,7 @@ install_cron() {
     
     log "Installing cron jobs..."
     
-    CRON_SCRIPT="${HOME}/ekos-runner/run-automation.sh"
+    CRON_SCRIPT="${INSTALL_DIR}/run-automation.sh"
     
     cat > "${CRON_SCRIPT}" <<'CRONEOF'
 #!/usr/bin/env bash
@@ -579,40 +591,12 @@ CRONEOF
 # =============================================================================
 create_helpers() {
     log "Creating helper scripts..."
-    
-    # Manual run script
-    cat > "${HOME}/ekos-runner/run.sh" <<'HELPEREOF'
-#!/usr/bin/env bash
-# Manual run script for EKOS automation
 
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MACHINE_ID="${1:-scope01}"
-
-echo "Running EKOS automation for ${MACHINE_ID}..."
-echo ""
-
-cd "${SCRIPT_DIR}"
-
-echo "=== Step 1: Pull Jobs ==="
-./pull_jobs.sh --machine-id "${MACHINE_ID}"
-
-echo ""
-echo "=== Step 2: Process Jobs ==="
-./ekos_runner.py --machine-id "${MACHINE_ID}"
-
-echo ""
-echo "=== Step 3: Push Results ==="
-./push_jobs.sh --machine-id "${MACHINE_ID}"
-
-echo ""
-echo "Done!"
-HELPEREOF
-    chmod +x "${HOME}/ekos-runner/run.sh"
+    # copy_scripts installs the real monitored run.sh. Do not overwrite it with
+    # a helper, or deployment will bypass scheduler loading and capture monitor.
     
     # Status check script
-    cat > "${HOME}/ekos-runner/status.sh" <<'HELPEREOF'
+    cat > "${INSTALL_DIR}/status.sh" <<'HELPEREOF'
 #!/usr/bin/env bash
 # Check status of EKOS runner
 
@@ -632,9 +616,36 @@ done
 echo ""
 echo "Last run: $(tail -1 /var/log/ekos-runner-${MACHINE_ID}.log 2>/dev/null || echo 'No log found')"
 HELPEREOF
-    chmod +x "${HOME}/ekos-runner/status.sh"
+    chmod +x "${INSTALL_DIR}/status.sh"
     
     log "Helper scripts created"
+}
+
+# =============================================================================
+# Create runtime environment file
+# =============================================================================
+create_runtime_env() {
+    local env_file="${INSTALL_DIR}/ekos-runner.env"
+
+    if [[ -f "${env_file}" ]]; then
+        log "Keeping existing runtime environment: ${env_file}"
+        return
+    fi
+
+    cat > "${env_file}" <<EOF
+# Runtime configuration for EKOS Observatory Automation.
+# Edit this file on the telescope machine before starting unattended service.
+
+EKOS_PROFILE=${MACHINE_ID}
+INDI_PORT=7624
+
+# Set production hardware drivers for this scope before relying on crash recovery.
+# Example format:
+# INDI_DRIVERS="indi_planewave_telescope indi_simulator_ccd indi_weather_safety_proxy"
+INDI_DRIVERS=""
+EOF
+    chmod 600 "${env_file}"
+    log "Runtime environment created: ${env_file}"
 }
 
 # =============================================================================
@@ -643,27 +654,43 @@ HELPEREOF
 install_systemd() {
     log "Installing systemd service for continuous operation..."
     
-    SERVICE_FILE="${SCRIPT_DIR}/ekos-runner.service"
     TIMER_FILE="${SCRIPT_DIR}/ekos-runner.timer"
     
-    if [[ ! -f "$SERVICE_FILE" ]] || [[ ! -f "$TIMER_FILE" ]]; then
-        error "Service/timer files not found in ${SCRIPT_DIR}"
+    if [[ ! -f "$TIMER_FILE" ]]; then
+        error "Timer file not found in ${SCRIPT_DIR}"
         return 1
     fi
     
-    # Copy service and timer files
+    # Generate service for this deployed machine. User services already run as
+    # the logged-in user, so do not include User=/Group= here.
     mkdir -p ~/.config/systemd/user/
-    cp "$SERVICE_FILE" ~/.config/systemd/user/
+    cat > ~/.config/systemd/user/ekos-runner.service <<EOF
+[Unit]
+Description=EKOS Observatory Automation Runner (${MACHINE_ID})
+After=graphical-session.target
+Wants=ekos-runner.timer
+
+[Service]
+Type=simple
+WorkingDirectory=${INSTALL_DIR}
+ExecStart=${INSTALL_DIR}/run-continuous.sh ${MACHINE_ID}
+EnvironmentFile=-${INSTALL_DIR}/ekos-runner.env
+StandardOutput=journal
+StandardError=journal
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=default.target
+EOF
     cp "$TIMER_FILE" ~/.config/systemd/user/
     
     # Reload systemd
     systemctl --user daemon-reload
     
-    # Enable and start timer
-    systemctl --user enable ekos-runner.timer
-    systemctl --user start ekos-runner.timer
-    
-    log "systemd service installed successfully"
+    # Do not enable/start automatically. Production machines should confirm
+    # EKOS_PROFILE/INDI_DRIVERS and run a supervised test first.
+    log "systemd service and timer installed"
     echo ""
     echo "Service status:"
     echo "  systemctl --user status ekos-runner.service"
@@ -671,6 +698,10 @@ install_systemd() {
     echo ""
     echo "View logs:"
     echo "  journalctl --user -u ekos-runner.service -f"
+    echo ""
+    echo "Enable/start after supervised checks:"
+    echo "  systemctl --user enable ekos-runner.timer"
+    echo "  systemctl --user start ekos-runner.timer"
     echo ""
 }
 
@@ -714,13 +745,15 @@ main() {
     fi
     
     create_helpers
+    create_runtime_env
+    install_cron
     
     echo ""
     echo "=============================================="
     echo "  Deployment Complete!"
     echo "=============================================="
     echo ""
-    echo "Scripts installed to: ${HOME}/ekos-runner/"
+    echo "Scripts installed to: ${INSTALL_DIR}/"
     echo ""
     
     if [[ "$INSTALL_WEATHER" == "true" ]]; then
@@ -751,7 +784,7 @@ main() {
     
     if [[ "$INSTALL_WATCHDOG" == "true" ]]; then
         echo "Weather Watchdog installed:"
-        echo "  Script: ${HOME}/ekos-runner/weather-watchdog.sh"
+        echo "  Script: ${INSTALL_DIR}/weather-watchdog.sh"
         echo "  Service: weather-watchdog.service"
         echo ""
         echo "The watchdog monitors weather and will:"
@@ -761,7 +794,7 @@ main() {
         echo "  - Update job status"
         echo ""
         echo "Start watchdog:"
-        echo "  systemctl --user start weather-watchdog"
+        echo "  systemctl --user start weather-watchdog.service"
         echo ""
     fi
     
@@ -770,7 +803,7 @@ main() {
     fi
     
     echo "Manual test:"
-    echo "  cd ${HOME}/ekos-runner"
+    echo "  cd ${INSTALL_DIR}"
     echo "  ./run.sh ${MACHINE_ID}"
     echo ""
     echo "Install automated cron (optional):"

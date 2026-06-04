@@ -81,6 +81,8 @@ while [[ $# -gt 0 ]]; do
             usage
             error_exit "Unknown option: $1"
             ;;
+    esac
+done
 
 # Check args
 if [[ -z "${MACHINE_ID:-}" ]]; then
@@ -95,25 +97,52 @@ fi
 
 # Find queue root
 QUEUE_ROOT="/var/lib/ekos-runner/jobs/${MACHINE_ID}"
+GENERATED_PATH="${QUEUE_ROOT}/generated"
 mkdir -p "${QUEUE_ROOT}"/{incoming,claimed,completed,failed,generated}
 
-# Check if KStars is running
+# Ensure KStars is running (wait up to KSTAR_TIMEOUT seconds)
+ensure_kstars_running() {
+    local timeout="${KSTAR_TIMEOUT:-30}"
+    local waited=0
+    while [[ $waited -lt $timeout ]]; do
+        if dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
+            /KStars org.freedesktop.DBus.Introspectable.Introspect \
+            > /dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+    return 1
+}
 ensure_kstars_running || error_exit "KStars not running"
-    
-    # Verify jobs are cleared
-    sleep 1
-    job_count=$(dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
+
+# Stop scheduler before clearing (prevents stale state bug)
+log "Stopping scheduler..."
+dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
+    "${SCHEDULER_PATH}" \
+    org.kde.kstars.Ekos.Scheduler.stop 2>/dev/null || true
+sleep 2
+
+# Clear existing jobs
+log "Clearing existing jobs..."
+dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
+    "${SCHEDULER_PATH}" \
+    org.kde.kstars.Ekos.Scheduler.removeAllJobs 2>/dev/null || true
+
+# Verify jobs are cleared
+sleep 1
+job_count=$(dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
+    "${SCHEDULER_PATH}" \
+    org.freedesktop.DBus.Properties.Get \
+    string:"org.kde.kstars.Ekos.Scheduler" \
+    string:"jsonJobs" 2>/dev/null | grep -o '"name":"' | wc -l || echo 0)
+job_count="${job_count//[[:space:]]/}"
+if [[ "${job_count:-0}" -gt 0 ]]; then
+    log "WARNING: Jobs not fully cleared (count: $job_count), forcing remove..."
+    dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
         "${SCHEDULER_PATH}" \
-        org.freedesktop.DBus.Properties.Get \
-        string:"org.kde.kstars.Ekos.Scheduler" \
-        string:"jsonJobs" 2>/dev/null | grep -o '"name":"' | wc -l || echo 0)
-    job_count="${job_count//[[:space:]]/}"  # Remove any whitespace
-    if [[ "${job_count:-0}" -gt 0 ]]; then
-        log "WARNING: Jobs not fully cleared (count: $job_count), forcing remove..."
-        dbus-send --session --dest="${KSTAR_DEST}" --print-reply \
-            "${SCHEDULER_PATH}" \
-            org.kde.kstars.Ekos.Scheduler.removeAllJobs 2>/dev/null || true
-    fi
+        org.kde.kstars.Ekos.Scheduler.removeAllJobs 2>/dev/null || true
 fi
 
 ESL_FILES=()

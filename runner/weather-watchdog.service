@@ -15,4 +15,4 @@ StandardError=journal
 SyslogIdentifier=weather-watchdog
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

@@ -52,9 +52,14 @@ def calculate_sun_altitude(lat, lon, dt=None):
     if dt is None:
         dt = datetime.now(UTC)
     
-    # Julian date
-    jd = (dt.toordinal() - 1721424.5) + \
-         (dt.hour + dt.minute/60 + dt.second/3600) / 24.0
+    # Julian date. Do not use datetime.toordinal(); that gives a Gregorian
+    # ordinal offset, not the astronomical Julian day used by GMST.
+    a = (14 - dt.month) // 12
+    y = dt.year + 4800 - a
+    m = dt.month + 12 * a - 3
+    jdn = dt.day + ((153 * m + 2) // 5) + 365 * y + y // 4 - y // 100 + y // 400 - 32045
+    frac = (dt.hour + dt.minute / 60 + dt.second / 3600) / 24.0
+    jd = jdn + frac - 0.5
     
     # Julian century
     t = (jd - 2451545.0) / 36525.0

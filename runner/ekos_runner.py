@@ -251,10 +251,13 @@ def build_scheduler_file(job: dict[str, Any], bundle_dir: Path, sequence_path: P
         latest = time_range.get('latest')
         min_altitude = as_float(schedule.get('altitude'), DEFAULT_MIN_ALTITUDE)
         moon_sep = as_float(schedule.get('moon_separation'), 0.0)
-        steps = ['Track', 'Focus', 'Align', 'Guide']
+        is_simulator = job.get('simulator_mode') or 'sim' in profile.lower() or 'test' in profile.lower() or job.get('project', '').lower() == 'simulator' or profile.lower() == 'scope03'
+        steps = ['Track'] if is_simulator else ['Track', 'Focus', 'Align', 'Guide']
         target_name = pick_target_name(target)
-        ra_value = target.get('ra') or target.get('ra_hours') or target.get('ra_deg') or ''
-        dec_value = target.get('dec') or target.get('dec_degs') or target.get('dec_deg') or ''
+        # RA comes in degrees from website, EKOS expects hours: divide by 15
+        ra_deg = as_float(target.get('ra') or target.get('ra_deg') or 0)
+        ra_value = ra_deg / 15.0 if ra_deg else 0
+        dec_value = as_float(target.get('dec') or target.get('dec_deg') or target.get('dec_degs') or 0)
 
         lines.extend([
             '  <Job>',
@@ -271,24 +274,37 @@ def build_scheduler_file(job: dict[str, Any], bundle_dir: Path, sequence_path: P
         ])
 
         if earliest:
-            lines.append(f'      <Condition value="{escape(str(earliest))}">At</Condition>')
+            # For simulator, always use ASAP regardless of scheduled time
+            if is_simulator:
+                lines.append('      <Condition>ASAP</Condition>')
+            else:
+                lines.append(f'      <Condition value="{escape(str(earliest))}">At</Condition>')
         else:
             lines.append('      <Condition>ASAP</Condition>')
 
+        lines.append('    </StartupCondition>')
+
+        # Skip constraints for simulator profiles or jobs marked as simulator_mode
+        is_simulator = job.get('simulator_mode') or 'sim' in profile.lower() or 'test' in profile.lower() or job.get('project', '').lower() == 'simulator' or profile.lower() == 'scope03'
+        if is_simulator:
+            lines.append('    <Constraints>')
+            lines.append('    </Constraints>')
+        else:
+            lines.extend([
+                '    <Constraints>',
+                f'      <Constraint value="{ctext(min_altitude)}">MinimumAltitude</Constraint>',
+            ])
+            if moon_sep > 0:
+                lines.append(f'      <Constraint value="{ctext(moon_sep)}">MoonSeparation</Constraint>')
+            lines.append('      <Constraint>EnforceTwilight</Constraint>')
+            lines.append('    </Constraints>')
+
         lines.extend([
-            '    </StartupCondition>',
-            '    <Constraints>',
-            f'      <Constraint value="{ctext(min_altitude)}">MinimumAltitude</Constraint>',
-        ])
-        if moon_sep > 0:
-            lines.append(f'      <Constraint value="{ctext(moon_sep)}">MoonSeparation</Constraint>')
-        lines.extend([
-            '      <Constraint>EnforceTwilight</Constraint>',
-            '    </Constraints>',
             '    <CompletionCondition>',
         ])
 
-        if latest:
+        # For simulator mode, always use Sequence completion (not time-based)
+        if latest and not is_simulator:
             lines.append(f'      <Condition value="{escape(str(latest))}">At</Condition>')
         else:
             lines.append('      <Condition>Sequence</Condition>')
@@ -458,22 +474,32 @@ def main() -> int:
     ensure_dirs(paths)
 
     runner_id = machine_id
-    job_path = pick_next_job(paths.incoming)
-    if job_path is None:
-        print(f'[{utc_now()}] No jobs waiting for {machine_id}')
-        return 0
+    job_count = 0
+    error_count = 0
 
-    print(f'[{utc_now()}] Claiming {job_path.name} on {socket.gethostname()} as {runner_id}')
-    claimed_path = claim_job(job_path, paths.claimed, runner_id)
+    # Process all pending jobs (not just one)
+    while True:
+        job_path = pick_next_job(paths.incoming)
+        if job_path is None:
+            if job_count == 0:
+                print(f'[{utc_now()}] No jobs waiting for {machine_id}')
+            else:
+                print(f'[{utc_now()}] Processed {job_count} jobs for {machine_id}')
+            break
 
-    try:
-        completed_path = process_job(claimed_path, paths, runner_id, args.dry_run)
-        print(f'[{utc_now()}] Prepared {completed_path.name}')
-        return 0
-    except Exception as exc:
-        failed_path = fail_job(claimed_path, paths, str(exc))
-        print(f'[{utc_now()}] Failed {failed_path.name}: {exc}', file=sys.stderr)
-        return 1
+        print(f'[{utc_now()}] Claiming {job_path.name} on {socket.gethostname()} as {runner_id}')
+        claimed_path = claim_job(job_path, paths.claimed, runner_id)
+
+        try:
+            completed_path = process_job(claimed_path, paths, runner_id, args.dry_run)
+            print(f'[{utc_now()}] Prepared {completed_path.name}')
+            job_count += 1
+        except Exception as exc:
+            failed_path = fail_job(claimed_path, paths, str(exc))
+            print(f'[{utc_now()}] Failed {failed_path.name}: {exc}', file=sys.stderr)
+            error_count += 1
+
+    return 0
 
 
 if __name__ == '__main__':

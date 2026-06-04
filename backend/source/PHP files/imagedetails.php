@@ -174,7 +174,7 @@ if(!file_exists($jpeg)){
 
 
 if(file_exists($jpeg)){
-	echo"<h1>Image preview</h1><img src=\"$jpeg\"><br>(This is an automatically-stretched preview, and will not show all image data)";
+	echo"<h1>Image preview</h1><img src=\"thumbnail.php?id=$dbid\"><br>(This is an automatically-stretched preview, and will not show all image data)";
 }else{
 	echo "jpeg not found $jpeg<br>";
 }
