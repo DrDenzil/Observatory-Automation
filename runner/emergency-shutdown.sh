@@ -188,13 +188,23 @@ wait_for_park() {
     local elapsed=0
     log "Waiting up to ${timeout}s for ${device} to reach park position..."
     while [[ $elapsed -lt $timeout ]]; do
-        local status
-        status=$(indi_getprop -h "$INDI_HOST" -p "$INDI_PORT" \
-            "${device}.TELESCOPE_PARK_STATUS.TELESCOPE_PARKED" 2>/dev/null || true)
-        if echo "$status" | grep -q "TELESCOPE_PARKED=On"; then
-            log "${device} confirmed at park position"
-            return 0
-        fi
+        # -x emits raw INDI XML which carries the property state attribute
+        # (state="Ok" = parked, state="Busy" = slewing, state="Alert" = error).
+        # TELESCOPE_PARK_STATUS is non-standard and absent on most drivers.
+        local state
+        state=$(indi_getprop -x -h "$INDI_HOST" -p "$INDI_PORT" \
+            "${device}.TELESCOPE_PARK.PARK" 2>/dev/null \
+            | grep -o 'state="[^"]*"' | head -1 | cut -d'"' -f2 || true)
+        case "$state" in
+            Ok)
+                log "${device} confirmed at park position"
+                return 0
+                ;;
+            Alert)
+                log "Warning: ${device} reported a park error (state=Alert) — verify manually"
+                return 1
+                ;;
+        esac
         sleep $interval
         elapsed=$((elapsed + interval))
     done
