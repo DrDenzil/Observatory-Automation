@@ -161,15 +161,61 @@ log "Dome parked/closed"
 STEP=$((STEP + 1))
 log "[${STEP}/${TOTAL}] Parking telescope..."
 
-if [[ "$DRY_RUN" == "false" ]]; then
-    indie "Telescope Simulator.TELESCOPE_PARK.PARK=On" 2>/dev/null || \
-    indie "LX200 GPS.TELESCOPE_PARK.PARK=On" 2>/dev/null || \
-    indie "EQMod Mount.TELESCOPE_PARK.PARK=On" 2>/dev/null || \
+# Try each known driver; stop at the first that accepts the command.
+# indi_setprop exits non-zero when the device is not connected, so the
+# || chain naturally skips drivers that aren't loaded.
+park_telescope() {
+    local driver="$1"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log "[DRY-RUN] indi_setprop ${driver}.TELESCOPE_PARK.PARK=On"
+        return 0
+    fi
+    indi_setprop -h "$INDI_HOST" -p "$INDI_PORT" "${driver}.TELESCOPE_PARK.PARK=On" 2>/dev/null
+}
+
+# Poll TELESCOPE_PARK_STATUS until the mount confirms it is at the park
+# position, rather than declaring success immediately after the command.
+wait_for_park() {
+    local device="$1"
+    local timeout="${2:-120}"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log "[DRY-RUN] Would wait up to ${timeout}s for ${device} to park"
+        return 0
+    fi
+
+    local interval=5
+    local elapsed=0
+    log "Waiting up to ${timeout}s for ${device} to reach park position..."
+    while [[ $elapsed -lt $timeout ]]; do
+        local status
+        status=$(indi_getprop -h "$INDI_HOST" -p "$INDI_PORT" \
+            "${device}.TELESCOPE_PARK_STATUS.TELESCOPE_PARKED" 2>/dev/null || true)
+        if echo "$status" | grep -q "TELESCOPE_PARKED=On"; then
+            log "${device} confirmed at park position"
+            return 0
+        fi
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+    log "Warning: ${device} park not confirmed within ${timeout}s — verify position manually before proceeding"
+    return 1
+}
+
+PARKED_TELESCOPE=""
+for driver in "Planewave Telescope" "EQMod Mount" "LX200 GPS" "Telescope Simulator"; do
+    if park_telescope "$driver"; then
+        PARKED_TELESCOPE="$driver"
+        break
+    fi
+done
+
+if [[ -n "$PARKED_TELESCOPE" ]]; then
+    wait_for_park "$PARKED_TELESCOPE" 120 || true
+else
     log "Warning: Could not park telescope (may not be connected)"
-    
-    sleep 3
 fi
-log "Telescope parked"
+log "Telescope park sequence complete"
 
 
 # =============================================================================
