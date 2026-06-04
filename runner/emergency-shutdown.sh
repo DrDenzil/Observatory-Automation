@@ -161,20 +161,9 @@ log "Dome parked/closed"
 STEP=$((STEP + 1))
 log "[${STEP}/${TOTAL}] Parking telescope..."
 
-# Try each known driver; stop at the first that accepts the command.
-# indi_setprop exits non-zero when the device is not connected, so the
-# || chain naturally skips drivers that aren't loaded.
-park_telescope() {
-    local driver="$1"
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log "[DRY-RUN] indi_setprop ${driver}.TELESCOPE_PARK.PARK=On"
-        return 0
-    fi
-    indi_setprop -h "$INDI_HOST" -p "$INDI_PORT" "${driver}.TELESCOPE_PARK.PARK=On" 2>/dev/null
-}
-
-# Poll TELESCOPE_PARK_STATUS until the mount confirms it is at the park
-# position, rather than declaring success immediately after the command.
+# indi_setprop always exits 0 regardless of whether the device exists, so it
+# cannot be used to detect which driver is loaded. Use indi_getprop instead:
+# it returns output only when the device/property is present in the INDI server.
 wait_for_park() {
     local device="$1"
     local timeout="${2:-120}"
@@ -188,9 +177,8 @@ wait_for_park() {
     local elapsed=0
     log "Waiting up to ${timeout}s for ${device} to reach park position..."
     while [[ $elapsed -lt $timeout ]]; do
-        # -x emits raw INDI XML which carries the property state attribute
-        # (state="Ok" = parked, state="Busy" = slewing, state="Alert" = error).
-        # TELESCOPE_PARK_STATUS is non-standard and absent on most drivers.
+        # -x emits raw INDI XML carrying the property state attribute:
+        # state="Ok" = parked, state="Busy" = slewing, state="Alert" = error.
         local state
         state=$(indi_getprop -x -h "$INDI_HOST" -p "$INDI_PORT" \
             "${device}.TELESCOPE_PARK.PARK" 2>/dev/null \
@@ -213,12 +201,21 @@ wait_for_park() {
 }
 
 PARKED_TELESCOPE=""
-for driver in "Planewave Telescope" "EQMod Mount" "LX200 GPS" "Telescope Simulator"; do
-    if park_telescope "$driver"; then
-        PARKED_TELESCOPE="$driver"
-        break
-    fi
-done
+if [[ "$DRY_RUN" == "true" ]]; then
+    log "[DRY-RUN] indi_setprop Planewave Telescope.TELESCOPE_PARK.PARK=On"
+    PARKED_TELESCOPE="Planewave Telescope"
+else
+    for driver in "Planewave Telescope" "EQMod Mount" "LX200 GPS" "Telescope Simulator"; do
+        # Check presence first; indi_getprop returns empty for unknown devices.
+        if indi_getprop -h "$INDI_HOST" -p "$INDI_PORT" \
+               "${driver}.TELESCOPE_PARK.PARK" 2>/dev/null | grep -q "PARK="; then
+            indi_setprop -h "$INDI_HOST" -p "$INDI_PORT" \
+                "${driver}.TELESCOPE_PARK.PARK=On" 2>/dev/null || true
+            PARKED_TELESCOPE="$driver"
+            break
+        fi
+    done
+fi
 
 if [[ -n "$PARKED_TELESCOPE" ]]; then
     wait_for_park "$PARKED_TELESCOPE" 120 || true
