@@ -1,0 +1,89 @@
+.page {
+  max-width: 700px;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.meta {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.section {
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+}
+
+.targets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.target {
+  padding: 0.8rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.targetName {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.targetDetail {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+
+.targetFilters {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.filterChip {
+  padding: 0.1rem 0.5rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.reviewActions {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.rejectForm {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rejectForm textarea {
+  width: 100%;
+}

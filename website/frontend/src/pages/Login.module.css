@@ -1,0 +1,87 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--bg-secondary);
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  position: relative;
+}
+
+.themeBtn {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  z-index: 1;
+  line-height: 1;
+}
+
+.brandBar {
+  height: 4px;
+  background: linear-gradient(90deg, var(--herts-charcoal), var(--herts-purple));
+}
+
+.content {
+  padding: 2rem 2rem 1.5rem;
+}
+
+.title {
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-top: 0.8rem;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.label input {
+  width: 100%;
+}
+
+.error {
+  padding: 0.6rem 0.8rem;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.demo {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}

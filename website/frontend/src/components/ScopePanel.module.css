@@ -1,0 +1,86 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.scope {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  background: var(--bg-secondary);
+}
+
+.scopeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.scopeName {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.scopeId {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.4rem;
+}
+
+.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.offline { background: var(--text-muted); }
+.busy { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+
+.state {
+  display: flex;
+  align-items: center;
+  font-size: 0.82rem;
+  text-transform: capitalize;
+  margin-bottom: 0.5rem;
+}
+
+.progress {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+  min-height: 1.1em;
+}
+
+.hw {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  font-size: 0.72rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.chipOn {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.heartbeat {
+  margin-top: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

@@ -1,18 +1,21 @@
 [Unit]
-Description=EKOS Observatory Automation Runner
-After=graphical-session.target
-Wants=ekos-runner.timer
+Description=Observatory EKOS Runner Agent
+Documentation=https://github.com/UH-Bayfordbury/Observatory-Automation
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/.ekos-runner
-Environment=MACHINE_ID=scope09
-EnvironmentFile=-%h/.ekos-runner/ekos-runner.env
-ExecStart=%h/.ekos-runner/run-continuous.sh ${MACHINE_ID}
-StandardOutput=journal
-StandardError=journal
+# Run as a dedicated user with access to the KStars D-Bus session if real hardware is used.
+User=astro
+ExecStart=/usr/local/bin/ekos-runner -config /etc/ekos-runner/runner.yaml
 Restart=on-failure
-RestartSec=60
+RestartSec=5
+# State directory for generated EKOS bundles (-> /var/lib/ekos-runner).
+StateDirectory=ekos-runner
+# Harden a little.
+NoNewPrivileges=true
+ProtectSystem=full
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target

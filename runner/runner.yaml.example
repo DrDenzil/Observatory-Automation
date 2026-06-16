@@ -1,0 +1,29 @@
+# Observatory runner agent configuration.
+# Copy to runner.yaml and edit per telescope machine.
+
+machine:
+  id: scope03                 # stable per-machine id (also the EKOS profile default)
+  name: "CKT Telescope"
+
+web:
+  base_url: "http://localhost:8000"   # observatory web API
+  api_key: "dev-runner-key-change-in-production"  # must match backend RUNNER_API_KEY
+  timeout: 10s
+
+runner:
+  poll_interval: 15s          # how often to ask the web API for a job
+  heartbeat_interval: 10s     # how often to report status
+  api_host: "0.0.0.0"         # runner's own REST API bind address
+  api_port: 9090
+  work_dir: "/var/lib/ekos-runner"    # where EKOS bundles are written
+  simulator: true             # true = fake KStars (dev/CI); false = real D-Bus
+  simulator_job_seconds: 8    # how long a simulated job "runs"
+  max_job_duration: 2h        # kill a job that runs longer than this
+
+kstars:
+  profile: "scope03"          # EKOS profile name (defaults to machine.id)
+  load_timeout: 30s
+
+logging:
+  level: "info"               # debug | info | warn | error
+  file: ""                    # empty = stdout only; or e.g. /var/log/ekos-runner/scope03.log

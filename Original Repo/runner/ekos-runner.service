@@ -1,0 +1,18 @@
+[Unit]
+Description=EKOS Observatory Automation Runner
+After=graphical-session.target
+Wants=ekos-runner.timer
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.ekos-runner
+Environment=MACHINE_ID=scope09
+EnvironmentFile=-%h/.ekos-runner/ekos-runner.env
+ExecStart=%h/.ekos-runner/run-continuous.sh ${MACHINE_ID}
+StandardOutput=journal
+StandardError=journal
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=default.target
