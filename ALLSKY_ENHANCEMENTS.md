@@ -66,6 +66,36 @@
 
 ---
 
+### Phase 6: S3 Migration (Wishlist) ⭐
+**What**: Move all-sky images/timelapse from local filesystem to cloud storage (S3/Minio)
+
+**Why**: 
+- Scalability: survive disk failures, add cameras without local storage limits
+- Backup: automatic cloud redundancy
+- Multi-server: multiple frontend instances can serve from single S3 bucket
+- Future-proof: gateway to CDN, archival strategies
+
+**Scope**:
+- Backend: Replace local filesystem reads with S3 object reads
+- Backend: Use `boto3` (AWS SDK) or similar
+- Keep `ALLSKY_BASE` as config, but switch to S3 URIs
+- Camera machines: switch from SSH upload to S3 upload (via IAM keys or presigned URLs)
+- Frontend: no changes needed (still request via `/api/allsky/...`)
+
+**Effort**: ~5-6 hours (backend refactor + camera upload mechanism repoint)
+
+**Dependencies**:
+- AWS S3 account or Minio self-hosted
+- `boto3` Python package
+- IAM credentials for camera machines
+
+**Not blocking**: Current volume-mount approach works fine for 1-3 cameras. S3 needed if:
+- Adding more cameras
+- Worried about disk space
+- Want redundancy/backup
+
+---
+
 ## Technical Notes
 
 ### Backend Improvements
@@ -116,6 +146,45 @@
 ## Blocking Items
 
 None — all enhancements are independent and can be added incrementally. No test machine needed.
+
+---
+
+## Docker Deployment Notes
+
+### Current: Volume Mount (Development & Production)
+
+**How it works**:
+1. Camera machines SSH into host and upload to `/www/allsky/`
+2. Docker container mounts that directory as a volume
+3. Backend reads from configurable `ALLSKY_BASE` env var
+
+**Example docker-compose.yml**:
+```yaml
+services:
+  observatory-backend:
+    image: observatory:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - ALLSKY_BASE=/mnt/allsky
+    volumes:
+      - /www/allsky:/mnt/allsky  # Host path → Container path
+```
+
+**Environment variable**:
+- `ALLSKY_BASE` defaults to `/www/allsky` (dev)
+- Override for Docker: `ALLSKY_BASE=/mnt/allsky`
+- Ready for S3 migration later (just change var to S3 URI)
+
+---
+
+### Future: S3 Storage (Wishlist — Phase 6)
+
+When ready to migrate:
+1. Set up S3 bucket (AWS or Minio)
+2. Refactor backend to use `boto3` instead of local filesystem
+3. Point camera upload to S3 (via IAM keys or presigned URLs)
+4. No Docker changes needed (same volume-mount config, just backed by S3)
 
 ---
 

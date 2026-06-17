@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, FileResponse
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pathlib import Path
 from datetime import date, timedelta
 import re
+import os
 
 router = APIRouter(prefix="/api/allsky", tags=["allsky"])
 
-# Configuration
-ALLSKY_BASE = Path("/www/allsky")
+# Configuration — configurable for Docker/different environments
+ALLSKY_BASE = Path(os.getenv("ALLSKY_BASE", "/www/allsky"))
 
 CAMERAS = {
     "bayfordbury_night": {"dir": "camera1", "name": "Bayfordbury Night"},
