@@ -10,7 +10,7 @@ from app.models.request import ObservationRequest, RequestTarget
 from app.models.job import Job
 from app.models.user import User
 from app.models.telescope import TelescopeConfig
-from app.schemas.request import RequestCreate, RequestOut, RequestReject
+from app.schemas.request import RequestCreate, RequestOut, RequestReject, RequestUpdate
 from app.services.auth import get_current_user, require_role
 
 router = APIRouter(prefix="/api/requests", tags=["requests"])
@@ -50,14 +50,17 @@ async def create_request(
     if not tel:
         raise HTTPException(status_code=422, detail="Telescope not found")
 
+    status_val = "submitted" if body.submit else "draft"
+    submitted_at = datetime.now(UTC) if body.submit else None
+
     req = ObservationRequest(
         user_id=user.id,
         project_name=body.project_name,
         description=body.description,
         priority=body.priority,
         telescope_id=body.telescope_id,
-        status="submitted",
-        submitted_at=datetime.now(UTC),
+        status=status_val,
+        submitted_at=submitted_at,
     )
     for t in body.targets:
         req.targets.append(RequestTarget(
@@ -125,6 +128,86 @@ async def get_request(
         raise HTTPException(status_code=404, detail="Request not found")
     if user.role == "observer" and req.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not your request")
+    return _to_out(req)
+
+
+@router.patch("/{request_id}", response_model=RequestOut)
+async def update_request(
+    request_id: str,
+    body: RequestUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Update a draft request. Only observers can update their own drafts."""
+    result = await db.execute(
+        select(ObservationRequest)
+        .options(selectinload(ObservationRequest.targets), selectinload(ObservationRequest.user), selectinload(ObservationRequest.approver), selectinload(ObservationRequest.telescope))
+        .where(ObservationRequest.id == request_id)
+    )
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if req.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your request")
+    if req.status != "draft":
+        raise HTTPException(status_code=400, detail=f"Cannot edit request in '{req.status}' status")
+
+    if body.project_name is not None:
+        req.project_name = body.project_name
+    if body.description is not None:
+        req.description = body.description
+    if body.priority is not None:
+        req.priority = body.priority
+    if body.telescope_id is not None:
+        tel = await db.get(TelescopeConfig, body.telescope_id)
+        if not tel:
+            raise HTTPException(status_code=422, detail="Telescope not found")
+        req.telescope_id = body.telescope_id
+
+    if body.targets is not None:
+        req.targets.clear()
+        for t in body.targets:
+            req.targets.append(RequestTarget(
+                target_name=t.target_name,
+                ra=t.ra,
+                dec=t.dec,
+                filters=t.filters,
+                exposure_seconds=t.exposure_seconds,
+                count=t.count,
+                binning=t.binning,
+            ))
+
+    await db.commit()
+    await db.refresh(req)
+    return _to_out(req)
+
+
+@router.post("/{request_id}/submit", response_model=RequestOut)
+async def submit_request(
+    request_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Submit a draft request (changes status from draft → submitted)."""
+    result = await db.execute(
+        select(ObservationRequest)
+        .options(selectinload(ObservationRequest.targets), selectinload(ObservationRequest.user), selectinload(ObservationRequest.approver), selectinload(ObservationRequest.telescope))
+        .where(ObservationRequest.id == request_id)
+    )
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if req.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your request")
+    if req.status != "draft":
+        raise HTTPException(status_code=400, detail=f"Cannot submit request in '{req.status}' status")
+    if not req.targets:
+        raise HTTPException(status_code=400, detail="Request must have at least one target")
+
+    req.status = "submitted"
+    req.submitted_at = datetime.now(UTC)
+    await db.commit()
+    await db.refresh(req)
     return _to_out(req)
 
 

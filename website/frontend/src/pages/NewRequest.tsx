@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { TargetInput, ObservationRequest, TelescopeConfig } from '../api/types';
 import styles from './NewRequest.module.css';
@@ -101,6 +101,7 @@ const emptyTarget = (tel?: TelescopeConfig): TargetInput => ({
 
 export function NewRequest() {
   const navigate = useNavigate();
+  const { id: draftId } = useParams<{ id?: string }>();
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
   const [telescopeId, setTelescopeId] = useState('');
@@ -108,10 +109,36 @@ export function NewRequest() {
   const [targets, setTargets] = useState<TargetInput[]>([emptyTarget()]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(!!draftId);
 
   useEffect(() => {
     api.get<TelescopeConfig[]>('/telescopes').then(setTelescopes).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (!draftId) return;
+    api.get<ObservationRequest>(`/requests/${draftId}`)
+      .then(req => {
+        if (req.status !== 'draft') {
+          setError('Can only edit draft requests');
+          return;
+        }
+        setProjectName(req.project_name);
+        setDescription(req.description || '');
+        setTelescopeId(req.telescope_id || '');
+        setTargets(req.targets.map(t => ({
+          target_name: t.target_name,
+          ra: t.ra,
+          dec: t.dec,
+          filters: t.filters,
+          exposure_seconds: t.exposure_seconds,
+          count: t.count,
+          binning: t.binning,
+        })));
+      })
+      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load draft'))
+      .finally(() => setLoading(false));
+  }, [draftId]);
 
   const selectedTelescope = telescopes.find(t => t.id === telescopeId);
   const availableFilters = selectedTelescope?.filters.length ? selectedTelescope.filters : ALL_FILTERS;
@@ -166,8 +193,7 @@ export function NewRequest() {
     return null;
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (submit: boolean) => {
     const validationError = validate();
     if (validationError) {
       setError(validationError);
@@ -176,24 +202,48 @@ export function NewRequest() {
     setError('');
     setSubmitting(true);
     try {
-      const result = await api.post<ObservationRequest>('/requests', {
+      const payload = {
         project_name: projectName.trim(),
         description: description.trim() || undefined,
         telescope_id: telescopeId,
         targets: targets.map(t => ({ ...t, target_name: t.target_name.trim() })),
-      });
+      };
+
+      let result: ObservationRequest;
+      if (draftId) {
+        // Update existing draft
+        await api.patch(`/requests/${draftId}`, payload);
+        if (submit) {
+          result = await api.post<ObservationRequest>(`/requests/${draftId}/submit`, {});
+        } else {
+          result = await api.get<ObservationRequest>(`/requests/${draftId}`);
+        }
+      } else {
+        // Create new request
+        result = await api.post<ObservationRequest>('/requests', {
+          ...payload,
+          submit,
+        });
+      }
       navigate(`/request/${result.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Submission failed');
+      setError(err instanceof Error ? err.message : (submit ? 'Submission failed' : 'Save failed'));
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    handleSave(true);
+  };
+
+  if (loading) return <p>Loading draft...</p>;
+
   return (
     <div>
-      <h1 className={styles.heading}>New Observation Request</h1>
-      <p className={styles.subtext}>Define your targets and imaging parameters. Staff will review before scheduling.</p>
+      <h1 className={styles.heading}>{draftId ? 'Edit Draft Request' : 'New Observation Request'}</h1>
+      <p className={styles.subtext}>{draftId ? 'Update your request or submit for review.' : 'Define your targets and imaging parameters. Staff will review before scheduling.'}</p>
 
       <form onSubmit={handleSubmit} className={styles.form}>
         {error && <div className={styles.error}>{error}</div>}
@@ -298,9 +348,14 @@ export function NewRequest() {
           + Add Another Target
         </button>
 
-        <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-          {submitting ? 'Submitting...' : 'Submit Request for Review'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <button type="button" onClick={() => handleSave(false)} disabled={submitting} className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
+            {submitting ? 'Saving...' : 'Save as Draft'}
+          </button>
+          <button type="submit" disabled={submitting} className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
+            {submitting ? (draftId ? 'Submitting...' : 'Submitting...') : (draftId ? 'Submit Draft' : 'Submit for Review')}
+          </button>
+        </div>
       </form>
     </div>
   );

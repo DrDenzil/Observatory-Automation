@@ -16,6 +16,7 @@ export function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/request/new" element={<NewRequest />} />
+        <Route path="/request/new/:id" element={<NewRequest />} />
         <Route path="/request/:id" element={<RequestDetail />} />
         <Route path="/staff" element={<StaffDashboard />} />
         <Route path="/telescopes" element={<Telescopes />} />

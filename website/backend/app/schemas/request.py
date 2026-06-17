@@ -79,6 +79,15 @@ class RequestCreate(BaseModel):
     priority: int = 1
     telescope_id: str
     targets: list[TargetCreate]
+    submit: bool = False  # False = save as draft, True = submit immediately
+
+
+class RequestUpdate(BaseModel):
+    project_name: str | None = None
+    description: str | None = None
+    priority: int | None = None
+    telescope_id: str | None = None
+    targets: list[TargetCreate] | None = None
 
 
 class RequestOut(BaseModel):

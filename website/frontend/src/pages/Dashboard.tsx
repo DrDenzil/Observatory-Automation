@@ -18,6 +18,7 @@ export function Dashboard() {
   }, []);
 
   const counts = {
+    draft: requests.filter(r => r.status === 'draft').length,
     submitted: requests.filter(r => r.status === 'submitted').length,
     approved: requests.filter(r => r.status === 'approved').length,
     rejected: requests.filter(r => r.status === 'rejected').length,
@@ -45,6 +46,12 @@ export function Dashboard() {
           <span className={styles.statValue}>{counts.total}</span>
           <span className={styles.statLabel}>Total</span>
         </div>
+        {counts.draft > 0 && (
+          <div className={`card ${styles.stat}`}>
+            <span className={styles.statValue} style={{ color: '#8b7355' }}>{counts.draft}</span>
+            <span className={styles.statLabel}>Draft</span>
+          </div>
+        )}
         <div className={`card ${styles.stat}`}>
           <span className={styles.statValue} style={{ color: 'var(--warning)' }}>{counts.submitted}</span>
           <span className={styles.statLabel}>Pending</span>
@@ -91,7 +98,11 @@ export function Dashboard() {
                   </td>
                   {isStaff && <td>{req.user_name || '-'}</td>}
                   <td>
-                    <Link to={`/request/${req.id}`} className="btn btn-secondary btn-sm">View</Link>
+                    {req.status === 'draft' ? (
+                      <Link to={`/request/new/${req.id}`} className="btn btn-secondary btn-sm">Edit</Link>
+                    ) : (
+                      <Link to={`/request/${req.id}`} className="btn btn-secondary btn-sm">View</Link>
+                    )}
                   </td>
                 </tr>
               ))}
