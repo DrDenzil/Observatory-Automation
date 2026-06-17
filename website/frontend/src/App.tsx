@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard';
 import { NewRequest } from './pages/NewRequest';
 import { RequestDetail } from './pages/RequestDetail';
 import { StaffDashboard } from './pages/StaffDashboard';
+import { JobDetail } from './pages/JobDetail';
 import { Telescopes } from './pages/Telescopes';
 import { ExposureCalculator } from './pages/ExposureCalculator';
 import { Users } from './pages/Users';
@@ -19,6 +20,7 @@ export function App() {
         <Route path="/request/new/:id" element={<NewRequest />} />
         <Route path="/request/:id" element={<RequestDetail />} />
         <Route path="/staff" element={<StaffDashboard />} />
+        <Route path="/job/:id" element={<JobDetail />} />
         <Route path="/telescopes" element={<Telescopes />} />
         <Route path="/expcalc" element={<ExposureCalculator />} />
         <Route path="/users" element={<Users />} />

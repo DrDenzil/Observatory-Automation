@@ -155,7 +155,7 @@ export function StaffDashboard() {
                 <th>Scope</th>
                 <th>Status</th>
                 <th>Queued</th>
-                <th>Run Now</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -169,7 +169,7 @@ export function StaffDashboard() {
                     {new Date(job.created_at).toLocaleDateString('en-GB')}
                   </td>
                   <td>
-                    {job.status === 'queued' && (
+                    {job.status === 'queued' ? (
                       <div className={styles.actions}>
                         <select
                           value={dispatchScopeId[job.id] ?? ''}
@@ -192,6 +192,8 @@ export function StaffDashboard() {
                           {dispatching === job.id ? '…' : 'Run Now'}
                         </button>
                       </div>
+                    ) : (
+                      <Link to={`/job/${job.id}`} className="btn btn-secondary btn-sm">View</Link>
                     )}
                   </td>
                 </tr>
@@ -212,6 +214,7 @@ export function StaffDashboard() {
                 <th>Scope</th>
                 <th>Status</th>
                 <th>Completed</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -223,6 +226,9 @@ export function StaffDashboard() {
                   <td><span className={`badge badge-${job.status}`}>{job.status}</span></td>
                   <td className={styles.date}>
                     {job.completed_at ? new Date(job.completed_at).toLocaleDateString('en-GB') : '-'}
+                  </td>
+                  <td>
+                    <Link to={`/job/${job.id}`} className="btn btn-secondary btn-sm">View</Link>
                   </td>
                 </tr>
               ))}
