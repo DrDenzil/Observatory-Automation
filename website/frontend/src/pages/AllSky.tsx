@@ -3,7 +3,8 @@ import { api } from '../api/client';
 import styles from './AllSky.module.css';
 
 interface AllSkyData {
-  camera: 'night' | 'day';
+  camera_id: string;
+  camera_name: string;
   image: string;
   image_url: string;
   timelapse_available: boolean;
@@ -11,8 +12,20 @@ interface AllSkyData {
   timelapse_url: string | null;
 }
 
+interface CameraInfo {
+  id: string;
+  name: string;
+  emoji: string;
+}
+
+const CAMERAS: CameraInfo[] = [
+  { id: 'bayfordbury_night', name: 'Bayfordbury Night', emoji: '🌙' },
+  { id: 'bayfordbury_day', name: 'Bayfordbury Day', emoji: '☀️' },
+  { id: 'hemel', name: 'Hemel', emoji: '📹' },
+];
+
 export function AllSky() {
-  const [activeCamera, setActiveCamera] = useState<'night' | 'day'>('night');
+  const [activeCamera, setActiveCamera] = useState(CAMERAS[0].id);
   const [data, setData] = useState<AllSkyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,12 +34,11 @@ export function AllSky() {
   const loadData = async () => {
     try {
       setError(null);
-      const endpoint = activeCamera === 'night' ? '/allsky/night/latest' : '/allsky/day/latest';
-      const result = await api.get<AllSkyData>(endpoint);
+      const result = await api.get<AllSkyData>(`/allsky/${activeCamera}/latest`);
       setData(result);
       setLastUpdated(new Date());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load all-sky data');
+      setError(err instanceof Error ? err.message : 'Failed to load camera data');
     } finally {
       setLoading(false);
     }
@@ -51,6 +63,8 @@ export function AllSky() {
     );
   }
 
+  const activeCam = CAMERAS.find(c => c.id === activeCamera);
+
   return (
     <div>
       <h1 className={styles.heading}>All-Sky Cameras</h1>
@@ -58,22 +72,19 @@ export function AllSky() {
 
       {/* Camera Selector */}
       <div className={styles.cameraSelector}>
-        <button
-          onClick={() => setActiveCamera('night')}
-          className={`${styles.cameraBtn} ${activeCamera === 'night' ? styles.active : ''}`}
-        >
-          🌙 Night Camera
-        </button>
-        <button
-          onClick={() => setActiveCamera('day')}
-          className={`${styles.cameraBtn} ${activeCamera === 'day' ? styles.active : ''}`}
-        >
-          ☀️ Day Camera
-        </button>
+        {CAMERAS.map(cam => (
+          <button
+            key={cam.id}
+            onClick={() => setActiveCamera(cam.id)}
+            className={`${styles.cameraBtn} ${activeCamera === cam.id ? styles.active : ''}`}
+          >
+            {cam.emoji} {cam.name}
+          </button>
+        ))}
       </div>
 
       {loading && !data ? (
-        <p className={styles.loading}>Loading camera feed...</p>
+        <p className={styles.loading}>Loading {activeCam?.name} camera...</p>
       ) : data ? (
         <div className={`card ${styles.content}`}>
           {/* Latest Image */}
@@ -83,7 +94,7 @@ export function AllSky() {
               <img
                 key={data.image}
                 src={data.image_url}
-                alt={`${data.camera} camera latest image`}
+                alt={`${data.camera_name} latest image`}
                 className={styles.image}
               />
               <div className={styles.imageInfo}>
@@ -126,7 +137,7 @@ export function AllSky() {
           {/* Info */}
           <div className={styles.info}>
             <p>
-              <strong>Camera:</strong> {data.camera === 'night' ? 'Night (Camera 1)' : 'Day (Camera 7)'}
+              <strong>Camera:</strong> {data.camera_name}
             </p>
             <p>
               <strong>Image updated:</strong> Every 30 seconds

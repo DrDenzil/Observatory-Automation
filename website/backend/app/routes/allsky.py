@@ -7,8 +7,12 @@ router = APIRouter(prefix="/api/allsky", tags=["allsky"])
 
 # Configuration
 ALLSKY_BASE = Path("/www/allsky")
-CAMERA_NIGHT = "camera1"
-CAMERA_DAY = "camera7"
+
+CAMERAS = {
+    "bayfordbury_night": {"dir": "camera1", "name": "Bayfordbury Night"},
+    "bayfordbury_day": {"dir": "camera2", "name": "Bayfordbury Day"},
+    "hemel": {"dir": "camera3", "name": "Hemel"},
+}
 
 # Image filename pattern: AllSkyImage{number}.jpg
 IMAGE_PATTERN = re.compile(r"AllSkyImage(\d+)\.jpg", re.IGNORECASE)
@@ -38,10 +42,25 @@ def get_timelapse_path(camera_dir: Path, target_date: date) -> Path | None:
     return timelapse if timelapse.exists() else None
 
 
-@router.get("/night/latest")
-async def get_latest_night():
-    """Get latest night camera image and timelapse info."""
-    camera_dir = ALLSKY_BASE / CAMERA_NIGHT
+@router.get("/cameras")
+async def list_cameras():
+    """List all available all-sky cameras."""
+    return {
+        "cameras": [
+            {"id": cam_id, "name": cam_info["name"]}
+            for cam_id, cam_info in CAMERAS.items()
+        ]
+    }
+
+
+@router.get("/{camera_id}/latest")
+async def get_latest(camera_id: str):
+    """Get latest camera image and timelapse info."""
+    if camera_id not in CAMERAS:
+        raise HTTPException(status_code=404, detail="Camera not found")
+
+    camera_info = CAMERAS[camera_id]
+    camera_dir = ALLSKY_BASE / camera_info["dir"]
 
     image_path = get_latest_image_path(camera_dir)
     if not image_path:
@@ -55,94 +74,47 @@ async def get_latest_night():
         timelapse_path = get_timelapse_path(camera_dir, today - timedelta(days=1))
 
     return {
-        "camera": "night",
+        "camera_id": camera_id,
+        "camera_name": camera_info["name"],
         "image": image_path.name,
-        "image_url": f"/api/allsky/night/image/{image_path.name}",
+        "image_url": f"/api/allsky/{camera_id}/image/{image_path.name}",
         "timelapse_available": timelapse_path is not None,
         "timelapse_date": timelapse_path.stem if timelapse_path else None,
-        "timelapse_url": f"/api/allsky/night/timelapse/{timelapse_path.stem}.mp4" if timelapse_path else None,
+        "timelapse_url": f"/api/allsky/{camera_id}/timelapse/{timelapse_path.stem}.mp4" if timelapse_path else None,
     }
 
 
-@router.get("/day/latest")
-async def get_latest_day():
-    """Get latest day camera image and timelapse info."""
-    camera_dir = ALLSKY_BASE / CAMERA_DAY
+@router.get("/{camera_id}/image/{filename}")
+async def get_image(camera_id: str, filename: str):
+    """Serve camera image."""
+    if camera_id not in CAMERAS:
+        raise HTTPException(status_code=404, detail="Camera not found")
 
-    image_path = get_latest_image_path(camera_dir)
-    if not image_path:
-        raise HTTPException(status_code=404, detail="No images found")
-
-    today = date.today()
-    timelapse_path = get_timelapse_path(camera_dir, today)
-
-    # If today's timelapse doesn't exist, try yesterday
-    if not timelapse_path:
-        timelapse_path = get_timelapse_path(camera_dir, today - timedelta(days=1))
-
-    return {
-        "camera": "day",
-        "image": image_path.name,
-        "image_url": f"/api/allsky/day/image/{image_path.name}",
-        "timelapse_available": timelapse_path is not None,
-        "timelapse_date": timelapse_path.stem if timelapse_path else None,
-        "timelapse_url": f"/api/allsky/day/timelapse/{timelapse_path.stem}.mp4" if timelapse_path else None,
-    }
-
-
-@router.get("/night/image/{filename}")
-async def get_night_image(filename: str):
-    """Serve night camera image."""
-    file_path = ALLSKY_BASE / CAMERA_NIGHT / filename
+    camera_info = CAMERAS[camera_id]
+    file_path = ALLSKY_BASE / camera_info["dir"] / filename
 
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="Image not found")
 
     # Security: prevent directory traversal
-    if not str(file_path).startswith(str(ALLSKY_BASE / CAMERA_NIGHT)):
+    if not str(file_path).startswith(str(ALLSKY_BASE / camera_info["dir"])):
         raise HTTPException(status_code=403, detail="Access denied")
 
     return FileResponse(file_path, media_type="image/jpeg")
 
 
-@router.get("/day/image/{filename}")
-async def get_day_image(filename: str):
-    """Serve day camera image."""
-    file_path = ALLSKY_BASE / CAMERA_DAY / filename
+@router.get("/{camera_id}/timelapse/{filename}")
+async def get_timelapse(camera_id: str, filename: str):
+    """Serve camera timelapse video."""
+    if camera_id not in CAMERAS:
+        raise HTTPException(status_code=404, detail="Camera not found")
 
-    if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="Image not found")
-
-    # Security: prevent directory traversal
-    if not str(file_path).startswith(str(ALLSKY_BASE / CAMERA_DAY)):
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    return FileResponse(file_path, media_type="image/jpeg")
-
-
-@router.get("/night/timelapse/{filename}")
-async def get_night_timelapse(filename: str):
-    """Serve night camera timelapse video."""
     # Validate filename format: YYYY-MM-DD.mp4
     if not re.match(r"\d{4}-\d{2}-\d{2}\.mp4$", filename):
         raise HTTPException(status_code=400, detail="Invalid filename format")
 
-    file_path = ALLSKY_BASE / CAMERA_NIGHT / filename
-
-    if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="Timelapse not found")
-
-    return FileResponse(file_path, media_type="video/mp4")
-
-
-@router.get("/day/timelapse/{filename}")
-async def get_day_timelapse(filename: str):
-    """Serve day camera timelapse video."""
-    # Validate filename format: YYYY-MM-DD.mp4
-    if not re.match(r"\d{4}-\d{2}-\d{2}\.mp4$", filename):
-        raise HTTPException(status_code=400, detail="Invalid filename format")
-
-    file_path = ALLSKY_BASE / CAMERA_DAY / filename
+    camera_info = CAMERAS[camera_id]
+    file_path = ALLSKY_BASE / camera_info["dir"] / filename
 
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="Timelapse not found")
