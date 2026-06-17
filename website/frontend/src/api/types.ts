@@ -1,9 +1,14 @@
 export interface User {
   id: string;
+  legacy_id: number | null;
   email: string;
   name: string;
   role: 'observer' | 'staff' | 'admin';
+  user_type: 'student' | 'staff' | 'external';
+  is_active: boolean;
+  department: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Target {

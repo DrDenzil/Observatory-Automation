@@ -36,6 +36,7 @@ export function Header() {
               <Link to="/telescopes" className={styles.navLink}>Telescopes</Link>
               <Link to="/expcalc" className={styles.navLink}>Exp Calc</Link>
               {isStaff && <Link to="/staff" className={styles.navLink}>Staff</Link>}
+              {user.role === 'admin' && <Link to="/users" className={styles.navLink}>Users</Link>}
             </>
           )}
         </nav>

@@ -9,7 +9,7 @@ from app.models import User
 from app.models.telescope import TelescopeConfig
 from app.models.catalogue import SimbadCache  # noqa: F401 — ensures table is created
 from app.services.auth import hash_password
-from app.routes import auth, requests, jobs, runner, scopes, telescopes
+from app.routes import auth, requests, jobs, runner, scopes, telescopes, users, users_import
 from app.routes import catalogue
 
 
@@ -22,9 +22,9 @@ async def lifespan(app: FastAPI):
         from sqlalchemy import select
         result = await db.execute(select(User).where(User.email == "denis@herts.ac.uk"))
         if not result.scalar_one_or_none():
-            db.add(User(email="denis@herts.ac.uk", name="Denis", hashed_password=hash_password("admin"), role="admin"))
-            db.add(User(email="staff@herts.ac.uk", name="Sam", hashed_password=hash_password("staff"), role="staff"))
-            db.add(User(email="observer@herts.ac.uk", name="Test Observer", hashed_password=hash_password("observer"), role="observer"))
+            db.add(User(email="denis@herts.ac.uk", name="Denis", hashed_password=hash_password("admin"), role="admin", user_type="staff", legacy_id=1, is_active=True))
+            db.add(User(email="staff@herts.ac.uk", name="Sam", hashed_password=hash_password("staff"), role="staff", user_type="staff", is_active=True))
+            db.add(User(email="observer@herts.ac.uk", name="Test Observer", hashed_password=hash_password("observer"), role="observer", user_type="student", is_active=True))
             await db.commit()
 
         tel_exists = await db.execute(select(TelescopeConfig).limit(1))
@@ -76,6 +76,8 @@ app.include_router(runner.router)
 app.include_router(scopes.router)
 app.include_router(telescopes.router)
 app.include_router(catalogue.router)
+app.include_router(users.router)
+app.include_router(users_import.router)
 
 
 @app.get("/api/health")

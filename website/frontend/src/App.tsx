@@ -7,6 +7,7 @@ import { RequestDetail } from './pages/RequestDetail';
 import { StaffDashboard } from './pages/StaffDashboard';
 import { Telescopes } from './pages/Telescopes';
 import { ExposureCalculator } from './pages/ExposureCalculator';
+import { Users } from './pages/Users';
 
 export function App() {
   return (
@@ -19,6 +20,7 @@ export function App() {
         <Route path="/staff" element={<StaffDashboard />} />
         <Route path="/telescopes" element={<Telescopes />} />
         <Route path="/expcalc" element={<ExposureCalculator />} />
+        <Route path="/users" element={<Users />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
