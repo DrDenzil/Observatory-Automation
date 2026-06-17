@@ -35,6 +35,7 @@ export function Header() {
               <Link to="/request/new" className={styles.navLink}>New Request</Link>
               <Link to="/telescopes" className={styles.navLink}>Telescopes</Link>
               <Link to="/expcalc" className={styles.navLink}>Exp Calc</Link>
+              <Link to="/allsky" className={styles.navLink}>All-Sky</Link>
               {isStaff && <Link to="/staff" className={styles.navLink}>Staff</Link>}
               {user.role === 'admin' && <Link to="/users" className={styles.navLink}>Users</Link>}
             </>

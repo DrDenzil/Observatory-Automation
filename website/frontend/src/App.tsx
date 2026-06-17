@@ -8,6 +8,7 @@ import { StaffDashboard } from './pages/StaffDashboard';
 import { JobDetail } from './pages/JobDetail';
 import { Telescopes } from './pages/Telescopes';
 import { ExposureCalculator } from './pages/ExposureCalculator';
+import { AllSky } from './pages/AllSky';
 import { Users } from './pages/Users';
 
 export function App() {
@@ -23,6 +24,7 @@ export function App() {
         <Route path="/job/:id" element={<JobDetail />} />
         <Route path="/telescopes" element={<Telescopes />} />
         <Route path="/expcalc" element={<ExposureCalculator />} />
+        <Route path="/allsky" element={<AllSky />} />
         <Route path="/users" element={<Users />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

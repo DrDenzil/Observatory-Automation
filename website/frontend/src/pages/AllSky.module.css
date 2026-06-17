@@ -1,0 +1,175 @@
+.heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.subtext {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+.cameraSelector {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.cameraBtn {
+  flex: 1;
+  padding: 0.75rem 1.25rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cameraBtn:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.cameraBtn.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.content {
+  padding: 1.5rem;
+}
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.imageContainer {
+  position: relative;
+}
+
+.image {
+  width: 100%;
+  max-width: 800px;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+}
+
+.imageInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0.5rem 0;
+}
+
+.timestamp {
+  margin: 0;
+  font-family: monospace;
+}
+
+.filename {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.videoContainer {
+  max-width: 800px;
+  margin-bottom: 1rem;
+}
+
+.video {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #000;
+}
+
+.infoCard {
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.infoText {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.info {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.info p {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.info strong {
+  color: var(--text-primary);
+}
+
+.loading {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem 1rem;
+}
+
+.error {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .cameraSelector {
+    flex-direction: column;
+  }
+
+  .cameraBtn {
+    width: 100%;
+  }
+
+  .heading {
+    font-size: 1.25rem;
+  }
+
+  .image {
+    max-width: 100%;
+  }
+
+  .video {
+    max-width: 100%;
+  }
+}
