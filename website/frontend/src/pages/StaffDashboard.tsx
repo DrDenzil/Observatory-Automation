@@ -4,7 +4,10 @@ import { api } from '../api/client';
 import type { ObservationRequest, Job, Scope } from '../api/types';
 import { ScopePanel } from '../components/ScopePanel';
 import { WeatherCard } from '../components/WeatherCard';
+import { Pager, pageSlice } from '../components/Pager';
 import styles from './StaffDashboard.module.css';
+
+const PAGE_SIZE = 25;
 
 export function StaffDashboard() {
   const [pending, setPending] = useState<ObservationRequest[]>([]);
@@ -15,6 +18,10 @@ export function StaffDashboard() {
   const [dispatchScopeId, setDispatchScopeId] = useState<Record<string, string>>({});
   const [dispatching, setDispatching] = useState<string | null>(null);
   const [dispatchError, setDispatchError] = useState<string | null>(null);
+  const [pendingPage, setPendingPage] = useState(0);
+  const [activeJobsPage, setActiveJobsPage] = useState(0);
+  const [completedJobsPage, setCompletedJobsPage] = useState(0);
+  const [recentPage, setRecentPage] = useState(0);
 
   const load = async () => {
     try {
@@ -108,7 +115,7 @@ export function StaffDashboard() {
         {pending.length === 0 ? (
           <p className={styles.empty}>No requests awaiting approval.</p>
         ) : (
-          <table className={styles.table}>
+          <><table className={styles.table}>
             <thead>
               <tr>
                 <th>Project</th>
@@ -119,7 +126,7 @@ export function StaffDashboard() {
               </tr>
             </thead>
             <tbody>
-              {pending.map(req => (
+              {pageSlice(pending, pendingPage, PAGE_SIZE).map(req => (
                 <tr key={req.id}>
                   <td className={styles.projectName}>{req.project_name}</td>
                   <td>{req.user_name}</td>
@@ -140,6 +147,7 @@ export function StaffDashboard() {
               ))}
             </tbody>
           </table>
+          <Pager total={pending.length} page={pendingPage} pageSize={PAGE_SIZE} onChange={setPendingPage} /></>
         )}
       </div>
 
@@ -158,7 +166,7 @@ export function StaffDashboard() {
         {activeJobs.length === 0 ? (
           <p className={styles.empty}>No active jobs in the queue.</p>
         ) : (
-          <table className={styles.table}>
+          <><table className={styles.table}>
             <thead>
               <tr>
                 <th>Project</th>
@@ -170,7 +178,7 @@ export function StaffDashboard() {
               </tr>
             </thead>
             <tbody>
-              {activeJobs.map(job => (
+              {pageSlice(activeJobs, activeJobsPage, PAGE_SIZE).map(job => (
                 <tr key={job.id}>
                   <td className={styles.projectName}>{job.project_name}</td>
                   <td>{job.target_summary}</td>
@@ -211,6 +219,7 @@ export function StaffDashboard() {
               ))}
             </tbody>
           </table>
+          <Pager total={activeJobs.length} page={activeJobsPage} pageSize={PAGE_SIZE} onChange={setActiveJobsPage} /></>
         )}
       </div>
 
@@ -229,7 +238,7 @@ export function StaffDashboard() {
               </tr>
             </thead>
             <tbody>
-              {completedJobs.map(job => (
+              {pageSlice(completedJobs, completedJobsPage, PAGE_SIZE).map(job => (
                 <tr key={job.id}>
                   <td className={styles.projectName}>{job.project_name}</td>
                   <td>{job.target_summary}</td>
@@ -245,6 +254,7 @@ export function StaffDashboard() {
               ))}
             </tbody>
           </table>
+          <Pager total={completedJobs.length} page={completedJobsPage} pageSize={PAGE_SIZE} onChange={setCompletedJobsPage} />
         </div>
       )}
 
@@ -253,7 +263,7 @@ export function StaffDashboard() {
         {recent.length === 0 ? (
           <p className={styles.empty}>No recent activity.</p>
         ) : (
-          <table className={styles.table}>
+          <><table className={styles.table}>
             <thead>
               <tr>
                 <th>Project</th>
@@ -264,7 +274,7 @@ export function StaffDashboard() {
               </tr>
             </thead>
             <tbody>
-              {recent.map(req => (
+              {pageSlice(recent, recentPage, PAGE_SIZE).map(req => (
                 <tr key={req.id}>
                   <td className={styles.projectName}>{req.project_name}</td>
                   <td>{req.user_name}</td>
@@ -277,6 +287,7 @@ export function StaffDashboard() {
               ))}
             </tbody>
           </table>
+          <Pager total={recent.length} page={recentPage} pageSize={PAGE_SIZE} onChange={setRecentPage} /></>
         )}
       </div>
     </div>

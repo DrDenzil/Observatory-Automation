@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import type { ObservationRequest } from '../api/types';
+import { Pager, pageSlice } from '../components/Pager';
 import styles from './Dashboard.module.css';
+
+const PAGE_SIZE = 25;
 
 export function Dashboard() {
   const { user, isStaff } = useAuth();
   const [requests, setRequests] = useState<ObservationRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     api.get<ObservationRequest[]>('/requests')
@@ -85,7 +89,7 @@ export function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {requests.map(req => (
+              {pageSlice(requests, page, PAGE_SIZE).map(req => (
                 <tr key={req.id}>
                   <td className={styles.projectName}>{req.project_name}</td>
                   <td>
@@ -108,6 +112,7 @@ export function Dashboard() {
               ))}
             </tbody>
           </table>
+          <Pager total={requests.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
         </div>
       )}
     </div>
