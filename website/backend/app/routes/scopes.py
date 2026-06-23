@@ -3,7 +3,8 @@
 from datetime import datetime, timedelta, timezone
 UTC = timezone.utc
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,15 +36,19 @@ def _to_out(scope: Scope, now: datetime) -> ScopeOut:
         network_connected=scope.network_connected and online,
         weather_safe=scope.weather_safe if online else None,
         weather_message=scope.weather_message if online else None,
-        # Emit tz-aware UTC so browsers don't misparse naive timestamps as local.
         last_heartbeat=_aware(scope.last_heartbeat) if scope.last_heartbeat else None,
         online=online,
+        automation_enabled=scope.automation_enabled,
     )
 
 
 def _aware(dt: datetime) -> datetime:
     """SQLite stores naive datetimes; treat them as UTC for comparison."""
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
+class AutomationToggle(BaseModel):
+    enabled: bool
 
 
 @router.get("", response_model=list[ScopeOut])
@@ -54,3 +59,20 @@ async def list_scopes(
     now = datetime.now(UTC)
     result = await db.execute(select(Scope).order_by(Scope.id))
     return [_to_out(s, now) for s in result.scalars()]
+
+
+@router.patch("/{scope_id}/automation", response_model=ScopeOut)
+async def set_automation(
+    scope_id: str,
+    body: AutomationToggle,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("staff", "admin")),
+):
+    """Enable or disable job claiming for a specific telescope."""
+    scope = await db.get(Scope, scope_id)
+    if scope is None:
+        raise HTTPException(status_code=404, detail="Scope not found")
+    scope.automation_enabled = body.enabled
+    await db.commit()
+    await db.refresh(scope)
+    return _to_out(scope, datetime.now(UTC))

@@ -91,7 +91,12 @@ export function StaffDashboard() {
           Telescope Control
           {scopes.length > 0 && <span className={styles.count}>{scopes.filter(s => s.online).length}/{scopes.length} online</span>}
         </h2>
-        <ScopePanel scopes={scopes} />
+        <ScopePanel
+          scopes={scopes}
+          onScopeUpdated={(scopeId, patch) =>
+            setScopes(prev => prev.map(s => s.id === scopeId ? { ...s, ...patch } : s))
+          }
+        />
       </div>
 
       <div className={`card ${styles.section}`}>

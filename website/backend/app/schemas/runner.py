@@ -67,5 +67,6 @@ class ScopeOut(BaseModel):
     weather_message: str | None
     last_heartbeat: datetime | None
     online: bool
+    automation_enabled: bool = True
 
     model_config = {"from_attributes": True}

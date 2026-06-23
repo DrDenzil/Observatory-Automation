@@ -87,6 +87,7 @@ export interface Scope {
   weather_message: string | null;
   last_heartbeat: string | null;
   online: boolean;
+  automation_enabled: boolean;
 }
 
 export interface WeatherData {

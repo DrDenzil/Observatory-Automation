@@ -32,6 +32,7 @@ class Scope(Base):
 
     weather_safe: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     weather_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    automation_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))

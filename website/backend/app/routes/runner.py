@@ -72,8 +72,12 @@ async def claim_next_job(
 
     Picks jobs explicitly assigned to this scope, or unassigned jobs, ordered by
     request priority (desc) then age (oldest first). Returns null (204-ish) when
-    the queue is empty.
+    the queue is empty or automation is disabled for this scope.
     """
+    scope = await db.get(Scope, scope_id)
+    if scope is not None and not scope.automation_enabled:
+        return None
+
     query = (
         select(Job)
         .options(
