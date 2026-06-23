@@ -58,7 +58,7 @@ function AutomationToggle({ scopeId, enabled, onToggled }: {
         <span className={styles.toggleThumb} />
       </span>
       <span className={`${styles.toggleLabel} ${enabled ? styles.toggleOn : styles.toggleOff}`}>
-        {enabled ? 'Auto' : 'Manual'}
+        {enabled ? 'Automation ON' : 'Automation OFF'}
       </span>
     </label>
   );
