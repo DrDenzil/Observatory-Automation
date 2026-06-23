@@ -47,12 +47,23 @@ type Config struct {
 		Simulator           bool     `yaml:"simulator"`
 		SimulatorJobSeconds int      `yaml:"simulator_job_seconds"`
 		MaxJobDuration      Duration `yaml:"max_job_duration"`
+		// IdleParkAfter: stop INDI this long after the last job finishes.
+		// A new job arriving before the timer fires cancels the park.
+		// 0 = disabled (leave INDI running indefinitely).
+		IdleParkAfter Duration `yaml:"idle_park_after"`
 	} `yaml:"runner"`
 
 	KStars struct {
 		Profile     string   `yaml:"profile"`
 		LoadTimeout Duration `yaml:"load_timeout"`
 	} `yaml:"kstars"`
+
+	Weather struct {
+		Enabled         bool     `yaml:"enabled"`
+		Script          string   `yaml:"script"`           // path to weather_safety.py
+		CheckInterval   Duration `yaml:"check_interval"`   // how often to poll weather
+		MinSafeReadings int      `yaml:"min_safe_readings"` // consecutive safe readings needed to resume after hold
+	} `yaml:"weather"`
 
 	Logging struct {
 		Level string `yaml:"level"`
@@ -121,6 +132,15 @@ func (c *Config) applyDefaults() {
 	}
 	if c.KStars.LoadTimeout == 0 {
 		c.KStars.LoadTimeout = Duration(30 * time.Second)
+	}
+	if c.Weather.Script == "" {
+		c.Weather.Script = "/usr/local/share/indi/scripts/weather_safety.py"
+	}
+	if c.Weather.CheckInterval == 0 {
+		c.Weather.CheckInterval = Duration(60 * time.Second)
+	}
+	if c.Weather.MinSafeReadings == 0 {
+		c.Weather.MinSafeReadings = 2
 	}
 	if c.Logging.Level == "" {
 		c.Logging.Level = "info"

@@ -1,4 +1,5 @@
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+UTC = timezone.utc
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
@@ -232,7 +233,11 @@ async def approve_request(
     req.approved_by = user.id
     req.approved_at = datetime.now(UTC)
 
-    job = Job(request_id=req.id, status="queued")
+    job = Job(
+        request_id=req.id,
+        status="queued",
+        scope_id=req.telescope.scope_id if req.telescope else None,
+    )
     db.add(job)
 
     await db.commit()

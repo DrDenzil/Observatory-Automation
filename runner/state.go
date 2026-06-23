@@ -8,12 +8,13 @@ import (
 type State string
 
 const (
-	StateIdle       State = "idle"
-	StateFetching   State = "fetching"
-	StateProcessing State = "processing"
-	StateExecuting  State = "executing"
-	StateUploading  State = "uploading"
-	StateFailed     State = "failed"
+	StateIdle        State = "idle"
+	StateFetching    State = "fetching"
+	StateProcessing  State = "processing"
+	StateExecuting   State = "executing"
+	StateUploading   State = "uploading"
+	StateFailed      State = "failed"
+	StateWeatherHold State = "weather_hold"
 )
 
 type Progress struct {
@@ -29,12 +30,18 @@ type Hardware struct {
 	Network bool `json:"network_connected"`
 }
 
+type Weather struct {
+	Safe    *bool  `json:"safe"`    // nil = not yet checked
+	Message string `json:"message"`
+}
+
 type Status struct {
 	MachineID    string    `json:"machine_id"`
 	State        State     `json:"state"`
 	CurrentJob   string    `json:"current_job"`
 	Progress     Progress  `json:"progress"`
 	Hardware     Hardware  `json:"hardware"`
+	Weather      Weather   `json:"weather"`
 	LastActivity time.Time `json:"last_activity"`
 }
 
@@ -58,18 +65,29 @@ type Agent struct {
 	log       *Logger
 	client    *Client
 	kstars    KStars
+	weather   WeatherChecker
 	startTime time.Time
 	trigger   chan struct{}
+
+	parkMu    sync.Mutex
+	parkTimer *time.Timer
+
+	// Weather safety tracking (written by weatherLoop, read by pollLoop/runJob).
+	weatherMu       sync.RWMutex
+	weatherSafe     bool // starts true (optimistic); set false on first unsafe reading
+	consecutiveSafe int  // increments each safe check; resets to 0 on unsafe
 }
 
-func NewAgent(cfg *Config, log *Logger, client *Client, kstars KStars) *Agent {
+func NewAgent(cfg *Config, log *Logger, client *Client, kstars KStars, wc WeatherChecker) *Agent {
 	return &Agent{
-		cfg:       cfg,
-		log:       log,
-		client:    client,
-		kstars:    kstars,
-		startTime: time.Now(),
-		trigger:   make(chan struct{}, 1),
+		cfg:         cfg,
+		log:         log,
+		client:      client,
+		kstars:      kstars,
+		weather:     wc,
+		weatherSafe: true, // optimistic until first unsafe reading
+		startTime:   time.Now(),
+		trigger:     make(chan struct{}, 1),
 		status: Status{
 			MachineID:    cfg.Machine.ID,
 			State:        StateIdle,
@@ -136,4 +154,23 @@ func (a *Agent) history() []JobRecord {
 
 func (a *Agent) uptimeSeconds() int {
 	return int(time.Since(a.startTime).Seconds())
+}
+
+func (a *Agent) setWeather(safe bool, msg string) {
+	t := safe
+	a.mu.Lock()
+	a.status.Weather = Weather{Safe: &t, Message: msg}
+	a.mu.Unlock()
+}
+
+func (a *Agent) isWeatherSafe() bool {
+	a.weatherMu.RLock()
+	defer a.weatherMu.RUnlock()
+	return a.weatherSafe
+}
+
+func (a *Agent) weatherMessage() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.status.Weather.Message
 }

@@ -1,4 +1,5 @@
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, timedelta, timezone
+UTC = timezone.utc
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select

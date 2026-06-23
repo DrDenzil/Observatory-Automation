@@ -34,13 +34,22 @@ func main() {
 		ks = NewDBusKStars(cfg.KStars.Profile)
 	}
 
-	agent := NewAgent(cfg, logger, client, ks)
+	var wc WeatherChecker
+	if cfg.Weather.Enabled {
+		wc = NewScriptWeather(cfg.Weather.Script)
+	} else {
+		wc = &SimWeather{}
+	}
+
+	agent := NewAgent(cfg, logger, client, ks, wc)
 	avail := ks.Available()
 	agent.setHardware(Hardware{KStars: avail, INDI: avail, Network: true})
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	go agent.weatherLoop(ctx)
+	go agent.hardwareLoop(ctx)
 	go agent.heartbeatLoop(ctx)
 	go agent.pollLoop(ctx)
 
@@ -53,11 +62,12 @@ func main() {
 	}()
 
 	logger.Info("main", "runner started", map[string]any{
-		"machine":   cfg.Machine.ID,
-		"web":       cfg.Web.BaseURL,
-		"api_addr":  addr,
-		"simulator": cfg.Runner.Simulator,
-		"kstars":    ks.Name(),
+		"machine":         cfg.Machine.ID,
+		"web":             cfg.Web.BaseURL,
+		"api_addr":        addr,
+		"simulator":       cfg.Runner.Simulator,
+		"kstars":          ks.Name(),
+		"weather_enabled": cfg.Weather.Enabled,
 	})
 
 	<-ctx.Done()

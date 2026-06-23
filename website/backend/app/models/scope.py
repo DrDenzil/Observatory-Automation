@@ -1,4 +1,5 @@
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+UTC = timezone.utc
 
 from sqlalchemy import String, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
@@ -28,6 +29,9 @@ class Scope(Base):
     kstars_running: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     indi_running: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     network_connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    weather_safe: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    weather_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))

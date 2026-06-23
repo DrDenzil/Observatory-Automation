@@ -74,6 +74,11 @@
   border-color: var(--success);
 }
 
+.chipDanger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
 .heartbeat {
   margin-top: 0.6rem;
   font-size: 0.72rem;

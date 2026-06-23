@@ -76,15 +76,29 @@ export interface Job {
 export interface Scope {
   id: string;
   name: string | null;
-  state: 'idle' | 'fetching' | 'processing' | 'executing' | 'uploading' | 'failed' | 'offline';
+  state: 'idle' | 'fetching' | 'processing' | 'executing' | 'uploading' | 'failed' | 'offline' | 'weather_hold';
   current_job_id: string | null;
   progress_step: string | null;
   progress_message: string | null;
   kstars_running: boolean;
   indi_running: boolean;
   network_connected: boolean;
+  weather_safe: boolean | null;
+  weather_message: string | null;
   last_heartbeat: string | null;
   online: boolean;
+}
+
+export interface WeatherData {
+  safe: boolean;
+  wind_kph: number;
+  wind_gust_kph: number;
+  temp_c: number;
+  humidity_pct: number;
+  rain_rate_mmh: number;
+  sun_altitude: number;
+  message: string;
+  checked_at: string;
 }
 
 export type TelescopeStatus = 'manual' | 'maintenance' | 'automatic';

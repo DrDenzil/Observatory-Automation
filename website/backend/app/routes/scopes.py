@@ -1,6 +1,7 @@
 """Staff-facing scope status. Reads the heartbeat-updated scopes table."""
 
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, timedelta, timezone
+UTC = timezone.utc
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -32,6 +33,8 @@ def _to_out(scope: Scope, now: datetime) -> ScopeOut:
         kstars_running=scope.kstars_running and online,
         indi_running=scope.indi_running and online,
         network_connected=scope.network_connected and online,
+        weather_safe=scope.weather_safe if online else None,
+        weather_message=scope.weather_message if online else None,
         # Emit tz-aware UTC so browsers don't misparse naive timestamps as local.
         last_heartbeat=_aware(scope.last_heartbeat) if scope.last_heartbeat else None,
         online=online,

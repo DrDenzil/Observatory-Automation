@@ -19,10 +19,17 @@ runner:
   simulator: true             # true = fake KStars (dev/CI); false = real D-Bus
   simulator_job_seconds: 8    # how long a simulated job "runs"
   max_job_duration: 2h        # kill a job that runs longer than this
+  idle_park_after: 20m        # stop INDI after this long idle; 0 = never park automatically
 
 kstars:
   profile: "scope03"          # EKOS profile name (defaults to machine.id)
   load_timeout: 30s
+
+weather:
+  enabled: false              # true on machines with weather station network access
+  script: "/usr/local/share/indi/scripts/weather_safety.py"
+  check_interval: 60s         # how often to poll weather
+  min_safe_readings: 2        # consecutive safe readings needed to resume after a hold
 
 logging:
   level: "info"               # debug | info | warn | error

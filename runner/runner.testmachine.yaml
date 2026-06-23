@@ -1,0 +1,34 @@
+# Observatory runner config — test machine (KStars simulator profile)
+# This file is ready to use. Rename to runner.yaml on the test machine.
+
+machine:
+  id: scope03
+  name: "CKT Telescope"
+
+web:
+  base_url: "http://10.2.55.11:8000"   # Mac's LAN IP — update if Mac IP changes
+  api_key: "dev-runner-key-change-in-production"
+  timeout: 10s
+
+runner:
+  poll_interval: 15s
+  heartbeat_interval: 10s
+  api_host: "0.0.0.0"
+  api_port: 9090
+  work_dir: "/var/lib/ekos-runner"
+  simulator: false         # false = real D-Bus to KStars (KStars handles simulation via profile)
+  max_job_duration: 2h
+  idle_park_after: 20m    # stop INDI 20 min after last job; 0 = never park automatically
+
+kstars:
+  profile: "Simulators"   # Must match the EKOS profile name in KStars (check via sqlite3 ~/.local/share/kstars/userdb.sqlite "SELECT name FROM profile;")
+
+weather:
+  enabled: false              # set to true on scope02 with the "weather" profile to test dome closing
+  script: "/usr/local/share/indi/scripts/weather_safety.py"
+  check_interval: 60s
+  min_safe_readings: 2
+
+logging:
+  level: "debug"          # Verbose for initial testing; switch to "info" after
+  file: "/var/log/ekos-runner/scope03.log"

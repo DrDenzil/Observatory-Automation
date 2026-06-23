@@ -9,7 +9,8 @@ these endpoints to:
 All job handoff flows through here, so the runner never touches the DB directly.
 """
 
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+UTC = timezone.utc
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, or_
@@ -52,6 +53,10 @@ async def heartbeat(body: HeartbeatIn, db: AsyncSession = Depends(get_db)):
     scope.kstars_running = body.kstars_running
     scope.indi_running = body.indi_running
     scope.network_connected = body.network_connected
+    if body.weather_safe is not None:
+        scope.weather_safe = body.weather_safe
+    if body.weather_message:
+        scope.weather_message = body.weather_message
     scope.last_heartbeat = datetime.now(UTC)
 
     await db.commit()
@@ -125,16 +130,30 @@ async def report_progress(
     db: AsyncSession = Depends(get_db),
 ):
     """Update a job's status/progress. The runner calls this throughout a run."""
-    job = await db.get(Job, job_id)
+    result = await db.execute(
+        select(Job).options(selectinload(Job.request)).where(Job.id == job_id)
+    )
+    job = result.scalar_one_or_none()
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
 
     if body.status:
-        job.status = body.status
-        if body.status == "running" and not job.started_at:
-            job.started_at = datetime.now(UTC)
-        elif body.status in ("completed", "failed"):
-            job.completed_at = datetime.now(UTC)
+        if body.status == "weather_abort":
+            # Requeue so the job is re-claimed when conditions clear.
+            # Leave the request as 'approved' — no staff intervention needed.
+            job.status = "queued"
+            job.scope_id = None
+            job.started_at = None
+        else:
+            job.status = body.status
+            if body.status == "running" and not job.started_at:
+                job.started_at = datetime.now(UTC)
+            elif body.status == "completed":
+                job.completed_at = datetime.now(UTC)
+            elif body.status == "failed":
+                job.completed_at = datetime.now(UTC)
+                # Return the request to 'submitted' so staff can review and re-approve.
+                job.request.status = "submitted"
     if body.error_message is not None:
         job.error_message = body.error_message
 

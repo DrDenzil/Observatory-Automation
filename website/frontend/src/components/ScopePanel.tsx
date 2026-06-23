@@ -11,9 +11,11 @@ function relativeTime(iso: string | null): string {
 }
 
 const BUSY_STATES = new Set(['fetching', 'processing', 'executing', 'uploading']);
+const WEATHER_HOLD = 'weather_hold';
 
 function dotClass(scope: Scope): string {
   if (!scope.online) return styles.offline;
+  if (scope.state === WEATHER_HOLD) return styles.busy;
   if (BUSY_STATES.has(scope.state)) return styles.busy;
   return styles.online;
 }
@@ -49,6 +51,11 @@ export function ScopePanel({ scopes }: { scopes: Scope[] }) {
             <HwChip label="KStars" on={scope.kstars_running} />
             <HwChip label="INDI" on={scope.indi_running} />
             <HwChip label="Network" on={scope.network_connected} />
+            {scope.online && scope.weather_safe !== null && scope.weather_safe !== undefined && (
+              <span className={`${styles.chip} ${scope.weather_safe ? styles.chipOn : styles.chipDanger}`}>
+                {scope.weather_safe ? 'Weather OK' : 'Weather Hold'}
+              </span>
+            )}
           </div>
 
           <div className={styles.heartbeat}>

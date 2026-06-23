@@ -15,6 +15,8 @@ class HeartbeatIn(BaseModel):
     kstars_running: bool = False
     indi_running: bool = False
     network_connected: bool = True
+    weather_safe: bool | None = None
+    weather_message: str | None = None
 
 
 # ---- Job bundle (web -> runner) ----
@@ -43,7 +45,7 @@ class JobBundle(BaseModel):
 # ---- Progress report (runner -> web) ----
 
 class ProgressIn(BaseModel):
-    status: str | None = None          # running | completed | failed
+    status: str | None = None          # running | completed | failed | weather_abort
     progress_step: str | None = None
     progress_message: str | None = None
     error_message: str | None = None
@@ -61,6 +63,8 @@ class ScopeOut(BaseModel):
     kstars_running: bool
     indi_running: bool
     network_connected: bool
+    weather_safe: bool | None
+    weather_message: str | None
     last_heartbeat: datetime | None
     online: bool
 

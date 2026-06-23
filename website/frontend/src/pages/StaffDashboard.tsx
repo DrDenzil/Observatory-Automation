@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import type { ObservationRequest, Job, Scope } from '../api/types';
 import { ScopePanel } from '../components/ScopePanel';
+import { WeatherCard } from '../components/WeatherCard';
 import styles from './StaffDashboard.module.css';
 
 export function StaffDashboard() {
@@ -79,6 +80,11 @@ export function StaffDashboard() {
   return (
     <div>
       <h1 className={styles.heading}>Staff Dashboard</h1>
+
+      <div className={`card ${styles.section}`}>
+        <h2 className={styles.sectionTitle}>Weather</h2>
+        <WeatherCard />
+      </div>
 
       <div className={`card ${styles.section}`}>
         <h2 className={styles.sectionTitle}>

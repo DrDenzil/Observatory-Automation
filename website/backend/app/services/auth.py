@@ -1,5 +1,6 @@
 import secrets
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
+UTC = timezone.utc
 
 import bcrypt
 from jose import JWTError, jwt
