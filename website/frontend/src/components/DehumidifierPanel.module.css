@@ -1,0 +1,127 @@
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.updated {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.cardOn {
+  border-color: var(--success);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.domeName {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.status {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badges {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.statusOn {
+  background: var(--success);
+  color: #fff;
+}
+
+.statusOff {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.statusRunning {
+  background: var(--info, #0ea5e9);
+  color: #fff;
+}
+
+.statusIdle {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.readings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem 0.5rem;
+}
+
+.reading {
+  display: flex;
+  flex-direction: column;
+}
+
+.readingLabel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.readingValue {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.toggle {
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.loading {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

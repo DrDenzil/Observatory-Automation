@@ -65,6 +65,20 @@ type Config struct {
 		MinSafeReadings int      `yaml:"min_safe_readings"` // consecutive safe readings needed to resume after hold
 	} `yaml:"weather"`
 
+	Webcam struct {
+		Device     string `yaml:"device"`      // e.g. /dev/video0
+		Port       int    `yaml:"port"`        // HTTP server port, default 8765
+		Width      int    `yaml:"width"`       // capture width, default 640
+		Height     int    `yaml:"height"`      // capture height, default 480
+		Framerate  int    `yaml:"framerate"`   // input framerate, default 10
+		StreamFPS  int    `yaml:"stream_fps"`  // output fps to client, default 5
+		Quality    int    `yaml:"quality"`     // JPEG quality 1-31 (lower=better), default 5
+	} `yaml:"webcam"`
+
+	Arduino struct {
+		Device string `yaml:"device"` // serial device, default /dev/ttyACM0
+	} `yaml:"arduino"`
+
 	Logging struct {
 		Level string `yaml:"level"`
 		File  string `yaml:"file"`
@@ -141,6 +155,30 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Weather.MinSafeReadings == 0 {
 		c.Weather.MinSafeReadings = 2
+	}
+	if c.Webcam.Device == "" {
+		c.Webcam.Device = "/dev/video0"
+	}
+	if c.Webcam.Port == 0 {
+		c.Webcam.Port = 8765
+	}
+	if c.Webcam.Width == 0 {
+		c.Webcam.Width = 640
+	}
+	if c.Webcam.Height == 0 {
+		c.Webcam.Height = 480
+	}
+	if c.Webcam.Framerate == 0 {
+		c.Webcam.Framerate = 10
+	}
+	if c.Webcam.StreamFPS == 0 {
+		c.Webcam.StreamFPS = 5
+	}
+	if c.Webcam.Quality == 0 {
+		c.Webcam.Quality = 5
+	}
+	if c.Arduino.Device == "" {
+		c.Arduino.Device = "/dev/ttyACM0"
 	}
 	if c.Logging.Level == "" {
 		c.Logging.Level = "info"

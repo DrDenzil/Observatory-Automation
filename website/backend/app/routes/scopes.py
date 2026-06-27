@@ -39,6 +39,9 @@ def _to_out(scope: Scope, now: datetime) -> ScopeOut:
         last_heartbeat=_aware(scope.last_heartbeat) if scope.last_heartbeat else None,
         online=online,
         automation_enabled=scope.automation_enabled,
+        webcam_available=scope.webcam_available and online,
+        arduino_available=scope.arduino_available and online,
+        last_ip=scope.last_ip if online else None,
     )
 
 

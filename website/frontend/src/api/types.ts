@@ -88,6 +88,9 @@ export interface Scope {
   last_heartbeat: string | null;
   online: boolean;
   automation_enabled: boolean;
+  webcam_available: boolean;
+  arduino_available: boolean;
+  last_ip: string | null;
 }
 
 export interface WeatherData {
@@ -127,3 +130,18 @@ export interface TelescopeConfig {
 }
 
 export type TelescopeInput = Omit<TelescopeConfig, 'id' | 'created_at' | 'updated_at'>;
+
+export interface DomeStatus {
+  dome: number;
+  enabled: boolean;
+  humidity_pct: number;
+  air_temp_c: number;
+  mount_temp_c: number;
+  dew_point_c: number;
+  running: boolean;
+}
+
+export interface DehumidifierStatus {
+  domes: DomeStatus[];
+  checked_at: string;
+}

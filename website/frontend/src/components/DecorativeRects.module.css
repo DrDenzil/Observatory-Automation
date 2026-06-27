@@ -1,0 +1,112 @@
+.container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Hide in redshift/night mode — clashes with red-only palette */
+:global([data-theme="dark"]) .container {
+  display: none;
+}
+
+.rect {
+  position: absolute;
+  border-radius: 3px;
+}
+
+/* Orange/yellow — top right, partially off-screen */
+.orange {
+  top: 90px;
+  right: -16px;
+  width: 70px;
+  height: 148px;
+  background: linear-gradient(180deg, #FF8A00 0%, #FFC300 100%);
+  opacity: 0.88;
+}
+
+/* Pink/red — left edge, ~35% down */
+.pinkRed {
+  top: 35%;
+  left: -18px;
+  width: 60px;
+  height: 125px;
+  background: linear-gradient(180deg, #E83250 0%, #BF3878 100%);
+  opacity: 0.85;
+}
+
+/* Cyan/teal/olive — bottom right, partially off-screen */
+.cyan {
+  bottom: 60px;
+  right: -16px;
+  width: 65px;
+  height: 138px;
+  background: linear-gradient(180deg, #28CCD8 0%, #48B888 52%, #BCCC3C 100%);
+  opacity: 0.85;
+}
+
+/* Sky blue — left edge, lower */
+.blue {
+  bottom: 28%;
+  left: -16px;
+  width: 52px;
+  height: 108px;
+  background: linear-gradient(180deg, #58C8EC 0%, #90C0EA 100%);
+  opacity: 0.82;
+}
+
+/* Light pink — top left, slightly off-screen */
+.pink {
+  top: 160px;
+  left: -12px;
+  width: 46px;
+  height: 92px;
+  background: linear-gradient(180deg, #FF9AB8 0%, #FFD0E4 100%);
+  opacity: 0.80;
+}
+
+/* Cluster A — upper right, partially into content */
+.clusterA1 {
+  top: 230px;
+  right: 7%;
+  width: 54px;
+  height: 112px;
+  background: linear-gradient(180deg, #58C8EC 0%, #90C0EA 100%);
+  opacity: 0.78;
+}
+
+.clusterA2 {
+  top: 295px;
+  right: 13%;
+  width: 42px;
+  height: 88px;
+  background: linear-gradient(180deg, #FF9AB8 0%, #FFD0E4 100%);
+  opacity: 0.72;
+}
+
+/* Cluster B — lower left, partially into content */
+.clusterB1 {
+  top: 68%;
+  left: 5%;
+  width: 58px;
+  height: 120px;
+  background: linear-gradient(180deg, #FF8A00 0%, #FFC300 100%);
+  opacity: 0.78;
+}
+
+.clusterB2 {
+  top: 74%;
+  left: 11%;
+  width: 44px;
+  height: 92px;
+  background: linear-gradient(180deg, #E83250 0%, #BF3878 100%);
+  opacity: 0.72;
+}
+
+/* Hide on very narrow viewports to avoid cluttering small screens */
+@media (max-width: 600px) {
+  .container {
+    display: none;
+  }
+}

@@ -15,7 +15,7 @@ export function Dashboard() {
   const [page, setPage] = useState(0);
 
   useEffect(() => {
-    api.get<ObservationRequest[]>('/requests')
+    api.get<ObservationRequest[]>('/requests?limit=200')
       .then(setRequests)
       .catch(console.error)
       .finally(() => setLoading(false));

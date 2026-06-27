@@ -41,13 +41,17 @@ func main() {
 		wc = &SimWeather{}
 	}
 
-	agent := NewAgent(cfg, logger, client, ks, wc)
+	arduino := NewArduinoController(cfg, logger)
+	ws := NewWebcamServer(cfg, logger, arduino)
+
+	agent := NewAgent(cfg, logger, client, ks, wc, ws)
 	avail := ks.Available()
 	agent.setHardware(Hardware{KStars: avail, INDI: avail, Network: true})
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	ws.Start(ctx)
 	go agent.weatherLoop(ctx)
 	go agent.hardwareLoop(ctx)
 	go agent.heartbeatLoop(ctx)
@@ -62,12 +66,14 @@ func main() {
 	}()
 
 	logger.Info("main", "runner started", map[string]any{
-		"machine":         cfg.Machine.ID,
-		"web":             cfg.Web.BaseURL,
-		"api_addr":        addr,
-		"simulator":       cfg.Runner.Simulator,
-		"kstars":          ks.Name(),
-		"weather_enabled": cfg.Weather.Enabled,
+		"machine":           cfg.Machine.ID,
+		"web":               cfg.Web.BaseURL,
+		"api_addr":          addr,
+		"simulator":         cfg.Runner.Simulator,
+		"kstars":            ks.Name(),
+		"weather_enabled":   cfg.Weather.Enabled,
+		"webcam_available":  ws.Available(),
+		"arduino_available": arduino.Available(),
 	})
 
 	<-ctx.Done()

@@ -228,6 +228,8 @@ func (a *Agent) sendHeartbeat(stateOverride string) {
 		NetworkConnected: s.Hardware.Network,
 		WeatherSafe:      s.Weather.Safe,
 		WeatherMessage:   s.Weather.Message,
+		WebcamAvailable:  a.webcam != nil && a.webcam.Available(),
+		ArduinoAvailable: a.webcam != nil && a.webcam.arduino != nil && a.webcam.arduino.Available(),
 	}
 	if err := a.client.Heartbeat(body); err != nil {
 		a.log.Warn("heartbeat", "failed", map[string]any{"error": err.Error()})

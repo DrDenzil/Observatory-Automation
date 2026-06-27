@@ -60,8 +60,10 @@ type heartbeatBody struct {
 	KStarsRunning    bool   `json:"kstars_running"`
 	INDIRunning      bool   `json:"indi_running"`
 	NetworkConnected bool   `json:"network_connected"`
-	WeatherSafe      *bool  `json:"weather_safe,omitempty"`
-	WeatherMessage   string `json:"weather_message,omitempty"`
+	WeatherSafe        *bool  `json:"weather_safe,omitempty"`
+	WeatherMessage     string `json:"weather_message,omitempty"`
+	WebcamAvailable    bool   `json:"webcam_available"`
+	ArduinoAvailable   bool   `json:"arduino_available"`
 }
 
 type progressBody struct {

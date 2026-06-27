@@ -17,6 +17,8 @@ class HeartbeatIn(BaseModel):
     network_connected: bool = True
     weather_safe: bool | None = None
     weather_message: str | None = None
+    webcam_available: bool = False
+    arduino_available: bool = False
 
 
 # ---- Job bundle (web -> runner) ----
@@ -68,5 +70,8 @@ class ScopeOut(BaseModel):
     last_heartbeat: datetime | None
     online: bool
     automation_enabled: bool = True
+    webcam_available: bool = False
+    arduino_available: bool = False
+    last_ip: str | None = None
 
     model_config = {"from_attributes": True}

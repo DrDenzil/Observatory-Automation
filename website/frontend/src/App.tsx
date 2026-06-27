@@ -10,6 +10,7 @@ import { Telescopes } from './pages/Telescopes';
 import { ExposureCalculator } from './pages/ExposureCalculator';
 import { AllSky } from './pages/AllSky';
 import { Users } from './pages/Users';
+import { WebcamPopout } from './pages/WebcamPopout';
 
 export function App() {
   return (
@@ -27,6 +28,7 @@ export function App() {
         <Route path="/allsky" element={<AllSky />} />
         <Route path="/users" element={<Users />} />
       </Route>
+      <Route path="/webcam/:scopeId" element={<WebcamPopout />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

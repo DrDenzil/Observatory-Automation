@@ -4,6 +4,8 @@ import { api } from '../api/client';
 import type { ObservationRequest, Job, Scope } from '../api/types';
 import { ScopePanel } from '../components/ScopePanel';
 import { WeatherCard } from '../components/WeatherCard';
+import { DehumidifierPanel } from '../components/DehumidifierPanel';
+import { CollapsibleSection } from '../components/CollapsibleSection';
 import { Pager, pageSlice } from '../components/Pager';
 import styles from './StaffDashboard.module.css';
 
@@ -27,7 +29,7 @@ export function StaffDashboard() {
     try {
       const [p, all, j, s] = await Promise.all([
         api.get<ObservationRequest[]>('/requests?status=submitted'),
-        api.get<ObservationRequest[]>('/requests?limit=20'),
+        api.get<ObservationRequest[]>('/requests?limit=200'),
         api.get<Job[]>('/jobs'),
         api.get<Scope[]>('/scopes'),
       ]);
@@ -88,30 +90,30 @@ export function StaffDashboard() {
     <div>
       <h1 className={styles.heading}>Staff Dashboard</h1>
 
-      <div className={`card ${styles.section}`}>
-        <h2 className={styles.sectionTitle}>Weather</h2>
+      <CollapsibleSection title="Weather" storageKey="staff-weather">
         <WeatherCard />
-      </div>
+      </CollapsibleSection>
 
-      <div className={`card ${styles.section}`}>
-        <h2 className={styles.sectionTitle}>
-          Telescope Control
-          {scopes.length > 0 && <span className={styles.count}>{scopes.filter(s => s.online).length}/{scopes.length} online</span>}
-        </h2>
+      <CollapsibleSection title="Dehumidifiers" storageKey="staff-dehumidifiers" defaultOpen={false}>
+        <DehumidifierPanel />
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title={<>Telescope Control {scopes.length > 0 && <span className={styles.count}>{scopes.filter(s => s.online).length}/{scopes.length} online</span>}</>}
+        storageKey="staff-scopes"
+      >
         <ScopePanel
           scopes={scopes}
           onScopeUpdated={(scopeId, patch) =>
             setScopes(prev => prev.map(s => s.id === scopeId ? { ...s, ...patch } : s))
           }
         />
-      </div>
+      </CollapsibleSection>
 
-      <div className={`card ${styles.section}`}>
-        <h2 className={styles.sectionTitle}>
-          Pending Approval
-          {pending.length > 0 && <span className={styles.count}>{pending.length}</span>}
-        </h2>
-
+      <CollapsibleSection
+        title={<>Pending Approval {pending.length > 0 && <span className={styles.count}>{pending.length}</span>}</>}
+        storageKey="staff-pending"
+      >
         {pending.length === 0 ? (
           <p className={styles.empty}>No requests awaiting approval.</p>
         ) : (
@@ -149,20 +151,17 @@ export function StaffDashboard() {
           </table>
           <Pager total={pending.length} page={pendingPage} pageSize={PAGE_SIZE} onChange={setPendingPage} /></>
         )}
-      </div>
+      </CollapsibleSection>
 
-      <div className={`card ${styles.section}`}>
-        <h2 className={styles.sectionTitle}>
-          Job Queue
-          {activeJobs.length > 0 && <span className={styles.count}>{activeJobs.length}</span>}
-        </h2>
-
+      <CollapsibleSection
+        title={<>Job Queue {activeJobs.length > 0 && <span className={styles.count}>{activeJobs.length}</span>}</>}
+        storageKey="staff-job-queue"
+      >
         {dispatchError && (
           <p style={{ color: 'var(--danger)', fontSize: '0.88rem', marginBottom: '0.75rem' }}>
             {dispatchError}
           </p>
         )}
-
         {activeJobs.length === 0 ? (
           <p className={styles.empty}>No active jobs in the queue.</p>
         ) : (
@@ -221,11 +220,14 @@ export function StaffDashboard() {
           </table>
           <Pager total={activeJobs.length} page={activeJobsPage} pageSize={PAGE_SIZE} onChange={setActiveJobsPage} /></>
         )}
-      </div>
+      </CollapsibleSection>
 
       {completedJobs.length > 0 && (
-        <div className={`card ${styles.section}`}>
-          <h2 className={styles.sectionTitle}>Completed Jobs</h2>
+        <CollapsibleSection
+          title={<>Completed Jobs <span className={styles.count}>{completedJobs.length}</span></>}
+          storageKey="staff-completed-jobs"
+          defaultOpen={false}
+        >
           <table className={styles.table}>
             <thead>
               <tr>
@@ -255,11 +257,10 @@ export function StaffDashboard() {
             </tbody>
           </table>
           <Pager total={completedJobs.length} page={completedJobsPage} pageSize={PAGE_SIZE} onChange={setCompletedJobsPage} />
-        </div>
+        </CollapsibleSection>
       )}
 
-      <div className={`card ${styles.section}`}>
-        <h2 className={styles.sectionTitle}>Recent Activity</h2>
+      <CollapsibleSection title="Recent Activity" storageKey="staff-recent" defaultOpen={false}>
         {recent.length === 0 ? (
           <p className={styles.empty}>No recent activity.</p>
         ) : (
@@ -289,7 +290,7 @@ export function StaffDashboard() {
           </table>
           <Pager total={recent.length} page={recentPage} pageSize={PAGE_SIZE} onChange={setRecentPage} /></>
         )}
-      </div>
+      </CollapsibleSection>
     </div>
   );
 }

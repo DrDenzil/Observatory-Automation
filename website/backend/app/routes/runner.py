@@ -12,7 +12,7 @@ All job handoff flows through here, so the runner never touches the DB directly.
 from datetime import datetime, timezone
 UTC = timezone.utc
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -38,7 +38,7 @@ def _make_queue_ref(job: Job) -> str:
 
 
 @router.post("/heartbeat")
-async def heartbeat(body: HeartbeatIn, db: AsyncSession = Depends(get_db)):
+async def heartbeat(body: HeartbeatIn, request: Request, db: AsyncSession = Depends(get_db)):
     """Upsert a scope's live status. Auto-registers the scope on first contact."""
     scope = await db.get(Scope, body.scope_id)
     if scope is None:
@@ -57,6 +57,9 @@ async def heartbeat(body: HeartbeatIn, db: AsyncSession = Depends(get_db)):
         scope.weather_safe = body.weather_safe
     if body.weather_message:
         scope.weather_message = body.weather_message
+    scope.webcam_available = body.webcam_available
+    scope.arduino_available = body.arduino_available
+    scope.last_ip = request.client.host if request.client else None
     scope.last_heartbeat = datetime.now(UTC)
 
     await db.commit()

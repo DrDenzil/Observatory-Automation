@@ -66,6 +66,7 @@ type Agent struct {
 	client    *Client
 	kstars    KStars
 	weather   WeatherChecker
+	webcam    *WebcamServer
 	startTime time.Time
 	trigger   chan struct{}
 
@@ -78,13 +79,14 @@ type Agent struct {
 	consecutiveSafe int  // increments each safe check; resets to 0 on unsafe
 }
 
-func NewAgent(cfg *Config, log *Logger, client *Client, kstars KStars, wc WeatherChecker) *Agent {
+func NewAgent(cfg *Config, log *Logger, client *Client, kstars KStars, wc WeatherChecker, ws *WebcamServer) *Agent {
 	return &Agent{
 		cfg:         cfg,
 		log:         log,
 		client:      client,
 		kstars:      kstars,
 		weather:     wc,
+		webcam:      ws,
 		weatherSafe: true, // optimistic until first unsafe reading
 		startTime:   time.Now(),
 		trigger:     make(chan struct{}, 1),

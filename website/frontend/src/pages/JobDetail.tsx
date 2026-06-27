@@ -31,13 +31,6 @@ export function JobDetail() {
   if (error) return <p className={styles.error}>{error}</p>;
   if (!job) return <p>Job not found</p>;
 
-  const statusColor = {
-    queued: 'var(--warning)',
-    running: 'var(--accent)',
-    completed: 'var(--success)',
-    failed: 'var(--danger)',
-  }[job.status] || 'var(--text-secondary)';
-
   const duration = job.completed_at && job.started_at
     ? Math.round((new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000)
     : undefined;

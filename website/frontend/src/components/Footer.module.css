@@ -1,0 +1,40 @@
+.footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+  padding: 1rem 1.5rem;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+}
+
+.link:hover {
+  opacity: 1;
+  text-decoration: none;
+}
+
+.logo {
+  height: 50px;
+  width: auto;
+  border-radius: 8px;
+  display: block;
+}

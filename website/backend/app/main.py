@@ -10,7 +10,7 @@ from app.models.telescope import TelescopeConfig
 from app.models.catalogue import SimbadCache  # noqa: F401 — ensures table is created
 from app.services.auth import hash_password
 from app.routes import auth, requests, jobs, runner, scopes, telescopes, users, users_import, allsky, weather
-from app.routes import catalogue
+from app.routes import catalogue, webcam, dehumidifiers
 
 
 @asynccontextmanager
@@ -80,6 +80,8 @@ app.include_router(users.router)
 app.include_router(users_import.router)
 app.include_router(allsky.router)
 app.include_router(weather.router)
+app.include_router(webcam.router)
+app.include_router(dehumidifiers.router)
 
 
 @app.get("/api/health")

@@ -34,5 +34,9 @@ class Scope(Base):
     weather_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
     automation_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    webcam_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    arduino_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)  # IPv4 or IPv6
+
     last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
